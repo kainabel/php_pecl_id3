@@ -163,7 +163,7 @@ PHP_FUNCTION(id3_get_tag)
 	
 	array_init(return_value);
 	
-	_php_id3v1_get_tag(stream, return_value);
+	_php_id3v1_get_tag(stream, return_value TSRMLS_CC);
 
 	if (opened == 1) {
 		php_stream_close(stream);
@@ -689,7 +689,7 @@ int _php_id3v2_get_tagLength(php_stream *stream TSRMLS_DC)
 	int	stdHdr	= 10,
 		footer	= 0;
 	
-	struct id3v2HdrFlags sFlags	= _php_id3v2_get_hdrFlags(stream);
+	struct id3v2HdrFlags sFlags	= _php_id3v2_get_hdrFlags(stream TSRMLS_CC);
 	
 	if(sFlags.footer) {
 		footer = 10;
