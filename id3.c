@@ -366,8 +366,6 @@ void _php_id3v1_get_tag(php_stream *stream , zval* return_value, int version TSR
    Set an array containg all information from the id3v1 tag */
 void _php_id3v2_get_tag(php_stream *stream , zval* return_value, int version TSRMLS_DC)
 {
-	zend_printf("Sorry, not implemented yet");
-	
 	int frameOffset = -1;
 	
 	struct id3v2Header sHeader;
@@ -375,6 +373,7 @@ void _php_id3v2_get_tag(php_stream *stream , zval* return_value, int version TSR
 	sHeader 		= _php_id3v2_get_header(stream TSRMLS_CC);
 	frameOffset		= _php_id3v2_get_framesOffset(stream TSRMLS_CC);
 	
+	zend_printf("Sorry, not implemented yet");
 	zend_printf("\n----------\nIdentifier: %s\n", sHeader.id);
 	zend_printf("Version: ID3v2.%d.%d\n", sHeader.version, sHeader.revision);
 	zend_printf("Header-Size: %d\n", sHeader.size);
