@@ -48,6 +48,8 @@ void _php_id3v2_get_tag(php_stream *stream , zval* return_value, int version TSR
 static int _php_id3_get_version(php_stream *stream TSRMLS_DC);
 static int _php_id3_write_padded(php_stream *stream, zval **data, int length TSRMLS_DC);
 int _php_id3v2_get_framesOffset(php_stream *stream TSRMLS_DC);
+int _php_id3v2_get_framesLength(php_stream* stream TSRMLS_DC);
+int _php_deUnSynchronize(unsigned char* buf, int bufLen TSRMLS_DC);
 
 /* constants */
 const int ID3V2_BASEHEADER_LENGTH = 10;
@@ -367,36 +369,40 @@ void _php_id3v1_get_tag(php_stream *stream , zval* return_value, int version TSR
 void _php_id3v2_get_tag(php_stream *stream , zval* return_value, int version TSRMLS_DC)
 {
 	int	frameOffset,
-		frameDataLength;
+		frameDataLength,
+		bytesRead = 0;
+		
+	unsigned char *frameData;
 	
 	struct id3v2Header sHeader;
 	struct id3v2ExtHeader sExtHeader;
-	
 	sHeader 		= _php_id3v2_get_header(stream TSRMLS_CC);
-	frameOffset		= _php_id3v2_get_framesOffset(stream TSRMLS_CC);
+	sExtHeader		= _php_id3v2_get_extHeader(stream TSRMLS_CC);
 	
-	frameDataLength	= sHeader.size;
-	if (sHeader.flags.extHdr == 1) {
-		sExtHeader = _php_id3v2_get_extHeader(stream TSRMLS_CC);
-		frameDataLength -= sExtHeader.size;
-	}
+	frameOffset		= _php_id3v2_get_framesOffset(stream TSRMLS_CC);
+	frameDataLength	= _php_id3v2_get_framesLength(stream TSRMLS_CC);
+	
+	php_stream_seek(stream, frameOffset, SEEK_SET);
+	frameData 		= emalloc(frameDataLength);
+	bytesRead 		= php_stream_read(stream, frameData, frameDataLength);
 	
 	/*
-	zend_printf("Sorry, not implemented yet");
-	zend_printf("\n----------\nIdentifier: %s\n", sHeader.id);
-	zend_printf("Version: ID3v2.%d.%d\n", sHeader.version, sHeader.revision);
-	zend_printf("Header-Size: %d\n", sHeader.size);
-	zend_printf("eff. Header-Size: %d\n", sHeader.effSize);
-	zend_printf("Flags:\n");
-	zend_printf("  unsynch: %d\n", sHeader.flags.unsynch);
-	zend_printf("  extHdr: %d\n", sHeader.flags.extHdr);
-	zend_printf("  experimental: %d\n", sHeader.flags.experimental);
-	zend_printf("  footer: %d\n", sHeader.flags.footer);
-	zend_printf("  compression: %d\n----------\n", sHeader.flags.compression);
-	
-	zend_printf("Framedata-Offset: %d \n", frameOffset);
-	zend_printf("Framedata-Length: %d \n", frameDataLength);
+		if entire frame data is unsynched, de-unsynch it now (ID3v2.3.x)
+		
+		[in ID3v2.4.0] Unsynchronisation [S:6.1] is done on frame level, instead
+		of on tag level, making it easier to skip frames, increasing the streamability
+		of the tag. The unsynchronisation flag in the header [S:3.1] indicates that
+		there exists an unsynchronised frame, while the new unsynchronisation flag in
+		the frame header [S:4.1.2] indicates unsynchronisation.
 	*/
+	
+	// TEST
+	sHeader.flags.unsynch = 1;	
+	if (sHeader.version <= 3 && sHeader.flags.unsynch == 1) {
+		frameDataLength	= _php_deUnSynchronize(frameData, frameDataLength TSRMLS_CC);
+	}
+	
+	efree(frameData);
 }
 /* }}} */
 
@@ -753,7 +759,7 @@ PHP_FUNCTION(id3_get_version)
 }
 /* }}} */
 
-/* {{{ proto struct id3v2Header _php_id3v2_get_header(php_stream *stream TSRMLS_DC)
+/* {{{ 
    Returns a structure that contains the header-data */
 struct id3v2Header _php_id3v2_get_header(php_stream *stream TSRMLS_DC)
 {
@@ -862,7 +868,7 @@ struct id3v2Header _php_id3v2_get_header(php_stream *stream TSRMLS_DC)
 }
 /* }}} */
 
-/* {{{ proto struct id3v2ExtHeader _php_id3v2_get_extHeader(php_stream *stream TSRMLS_DC)
+/* {{{ 
    Returns a structure that contains a structure that describes the extended tag-header */
 struct id3v2ExtHeader _php_id3v2_get_extHeader(php_stream *stream TSRMLS_DC)
 {
@@ -982,7 +988,7 @@ struct id3v2ExtHeader _php_id3v2_get_extHeader(php_stream *stream TSRMLS_DC)
 }
 /* }}} */
 
-/* {{{ proto int _php_id3v2_get_tagLength(php_stream *stream TSRMLS_DC)
+/* {{{ 
    Returns the length in bytes of the id3v2-tag */
 int _php_id3v2_get_framesOffset(php_stream *stream TSRMLS_DC)
 {
@@ -1003,6 +1009,29 @@ int _php_id3v2_get_framesOffset(php_stream *stream TSRMLS_DC)
 }
 /* }}} */
 
+/* {{{
+   Returns the length of the frame-block in bytes */
+int _php_id3v2_get_framesLength(php_stream* stream TSRMLS_DC)
+{
+	int frameDataLength = 0;
+	
+	struct id3v2Header sHeader;
+	struct id3v2ExtHeader sExtHeader;
+	
+	sHeader = _php_id3v2_get_header(stream TSRMLS_CC);
+
+	frameDataLength	= sHeader.size;
+	if (sHeader.flags.extHdr == 1) {
+		sExtHeader = _php_id3v2_get_extHeader(stream TSRMLS_CC);
+		frameDataLength -= sExtHeader.size;
+	}
+	
+	return frameDataLength;
+}
+/* }}} */
+
+/* {{{
+   Returns the version-number (see the version constants above) */
 int _php_id3_get_version(php_stream *stream TSRMLS_DC)
 {
 	int		version = 0;
@@ -1056,7 +1085,7 @@ int _php_id3_get_version(php_stream *stream TSRMLS_DC)
 }
 /* }}} */
 
-/* {{{ proto int _php_bigEndian_to_Int(char* byteword, int bytewordlen, int synchsafe)
+/* {{{ 
    Converts a big-endian byte-stream into an integer */
 int _php_bigEndian_to_Int(char* byteword, int bytewordlen, int synchsafe TSRMLS_DC) 
 {
@@ -1071,6 +1100,46 @@ int _php_bigEndian_to_Int(char* byteword, int bytewordlen, int synchsafe TSRMLS_
 		}
 	}
 	return intvalue + 10;
+}
+/* }}} */
+
+/* {{{ 
+   De-Unsynchronizes the data in a specified buffer. 
+   Returns the bufferlength after de-unsynchronization */
+int _php_deUnSynchronize(unsigned char* buf, int bufLen TSRMLS_DC) 
+{
+	int	i,
+		j,
+		newBufLen = bufLen;
+		
+	unsigned char *newBuf;
+	
+	for (i = 0; i < bufLen; i++) {
+		if ((int)buf[i] == 0xFF) {
+			++newBufLen;
+		}
+	}
+	
+	/* if no bytes have to be modified, I can leave now */
+	if (newBufLen == bufLen) {
+		return newBufLen;
+	}
+	
+	/* lets go and de-unsynchronize some bytes */
+	newBuf = emalloc(newBufLen);
+	
+	for (i = 0, j = 0; i < bufLen; i++, j++) {
+		if ((int)buf[i] != 0xFF) {
+			newBuf[j]	= buf[i];	
+		} else {
+			newBuf[j]	= buf[i];
+			newBuf[++j]	= 0x00;
+		}
+	}
+
+	buf = newBuf;
+	efree(newBuf);
+	return newBufLen;
 }
 /* }}} */
 
