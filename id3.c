@@ -29,44 +29,9 @@
 #include "php_id3.h"
 #include "ext/standard/flock_compat.h"
 
-/**
- * fseek positions
- */
-const int ID3_SEEK_V1_TAG = -128;
-const int ID3_SEEK_V1_TITLE = -125;
-const int ID3_SEEK_V1_ARTIST = -95;
-const int ID3_SEEK_V1_ALBUM = -65;
-const int ID3_SEEK_V1_YEAR = -35;
-const int ID3_SEEK_V1_COMMENT = -31;
-const int ID3_SEEK_V1_TRACK = -2;
-const int ID3_SEEK_V1_GENRE = -1;
-
-char *id3_genres[148] = { "Blues", "Classic Rock", "Country", "Dance", "Disco", "Funk", "Grunge", "Hip-Hop", "Jazz", "Metal", "New Age",
-		"Oldies", "Other", "Pop", "R&B", "Rap", "Reggae", "Rock", "Techno", "Industrial", "Alternative", "Ska", "Death Metal", "Pranks", 
-		"Soundtrack", "Euro-Techno", "Ambient", "Trip-Hop", "Vocal", "Jazz+Funk", "Fusion", "Trance", "Classical", "Instrumental", "Acid", 
-		"House", "Game", "Sound Clip", "Gospel", "Noise", "Alternative Rock", "Bass", "Soul", "Punk", "Space", "Meditative", "Instrumental Pop", 
-		"Instrumental Rock", "Ethnic", "Gothic", "Darkwave", "Techno-Industrial", "Electronic", "Pop-Folk", "Eurodance", "Dream", "Southern Rock", 
-		"Comedy", "Cult", "Gangsta", "Top 40", "Christian Rap", "Pop/Funk", "Jungle", "Native US", "Cabaret", "New Wave", "Psychadelic", "Rave", 
-		"Showtunes", "Trailer", "Lo-Fi", "Tribal", "Acid Punk", "Acid Jazz", "Polka", "Retro", "Musical", "Rock & Roll", "Hard Rock", "Folk", 
-		"Folk-Rock", "National Folk", "Swing", "Fast Fusion", "Bebob", "Latin", "Revival", "Celtic", "Bluegrass", "Avantgarde", "Gothic Rock", 
-		"Progressive Rock", "Psychedelic Rock", "Symphonic Rock", "Slow Rock", "Big Band", "Chorus", "Easy Listening", "Acoustic", "Humour", 
-		"Speech", "Chanson", "Opera", "Chamber Music", "Sonata", "Symphony", "Booty Bass", "Primus", "Porn Groove", "Satire", "Slow Jam", "Club", 
-		"Tango", "Samba", "Folklore", "Ballad", "Power Ballad", "Rhytmic Soul", "Freestyle", "Duet", "Punk Rock", "Drum Solo", "Acapella", 
-		"Euro-House", "Dance Hall", "Goa", "Drum & Bass", "Club-House", "Hardcore", "Terror", "Indie", "BritPop", "Negerpunk", "Polsk Punk", 
-		"Beat", "Christian Gangsta", "Heavy Metal", "Black Metal", "Crossover", "Contemporary C", "Christian Rock", "Merengue", "Salsa", 
-		"Thrash Metal", "Anime", "JPop", "SynthPop" };
-
-const int ID3_GENRE_COUNT = 148;
-
-static int _php_id3_get_version(php_stream *stream TSRMLS_DC);
-static int _php_id3_write_padded(php_stream *stream, zval **data, int length TSRMLS_DC);
-
 /* If you declare any globals in php_id3.h uncomment this:
 ZEND_DECLARE_MODULE_GLOBALS(id3)
 */
-
-/* True global resources - no need for thread safety here */
-static int le_id3;
 
 /* {{{ id3_functions[]
  *
@@ -151,15 +116,6 @@ PHP_FUNCTION(id3_get_tag)
 	int version = ID3_V1_0;
 	int opened = 0;
 	char tag[4];
-	char title[31];
-	char artist[31];
-	char album[31];
-	char year[5];
-	char comment[31];
-	unsigned char genre;
-	char track;
-	unsigned int bytes_read;
-	char byte28, byte29;
 	
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "z|l", &arg, &version) == FAILURE) {
 		return;
@@ -204,18 +160,41 @@ PHP_FUNCTION(id3_get_tag)
 		}
 		return;
 	}
+	
+	array_init(return_value);
+	
+	return_value = _php_id3v1_get_tag(stream, return_value);
 
-	/**
-	 * check for v1.1
-	 */
+	if (opened == 1) {
+		php_stream_close(stream);
+	}
+	return;
+}
+/* }}} */
+
+/* {{{ proto boolean id3_set_tag(string file, array tag [, int version])
+   Set an array containg all information from the id3 tag */
+zval* _php_id3v1_get_tag(php_stream *stream , zval* return_value TSRMLS_DC)
+{
+	unsigned char genre;
+	unsigned int bytes_read;
+	int 	version = ID3_V1_0;
+	char	title[31],
+			artist[31],
+			album[31],
+			year[5],
+			comment[31],
+			track,
+			byte28,
+			byte29;
+	
+	/* check for v1.1 */
 	php_stream_seek(stream, -3, SEEK_END);
 	php_stream_read(stream, &byte28, 1);
 	php_stream_read(stream, &byte29, 1);
 	if (byte28 == '\0' && byte29 != '\0') {
 		version = ID3_V1_1;
 	}
-
-	array_init(return_value);
 	
 	/* title */
 	php_stream_seek(stream, -125, SEEK_END);
@@ -266,19 +245,8 @@ PHP_FUNCTION(id3_get_tag)
 	/* genre */
 	php_stream_read(stream, &genre, 1);
 	add_assoc_long(return_value, "genre", (long)genre);
-
-	if (opened == 1) {
-		php_stream_close(stream);
-	}
-	return;
-}
-/* }}} */
-
-/* {{{ proto boolean id3_set_tag(string file, array tag [, int version])
-   Set an array containg all information from the id3 tag */
-zval* _php_id3v1_get_tag(php_stream *stream  TSRMLS_DC)
-{
-
+	
+	return return_value;
 }
 /* }}} */
 

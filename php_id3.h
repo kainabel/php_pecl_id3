@@ -57,6 +57,14 @@ PHP_FUNCTION(id3_get_genre_id);
 #define BIT6(a)	(a & 64)
 #define BIT7(a)	(a & 128)
 
+/* function prototypes */
+struct id3v2HdrFlags _php_id3v2_get_hdrFlags(php_stream *stream TSRMLS_DC);
+int _php_id3v2_get_tagLength(php_stream *stream TSRMLS_DC);
+int _php_bigEndian_to_Int(char* byteword, int bytewordlen, int synchsafe);
+zval* _php_id3v1_get_tag(php_stream *stream , zval* retval TSRMLS_DC);
+static int _php_id3_get_version(php_stream *stream TSRMLS_DC);
+static int _php_id3_write_padded(php_stream *stream, zval **data, int length TSRMLS_DC);
+
 /* constants */
 const int ID3V2_BASEHEADER_LENGTH = 10;
 const int ID3V2_IDENTIFIER_LENGTH = 3;
@@ -82,11 +90,32 @@ struct id3v2HdrFlags {
 	int compression;
 };
 
-/* prototypes */
-struct id3v2HdrFlags _php_id3v2_get_hdrFlags(php_stream *stream TSRMLS_DC);
-int _php_id3v2_get_tagLength(php_stream *stream TSRMLS_DC);
-int _php_bigEndian_to_Int(char* byteword, int bytewordlen, int synchsafe);
-zval* _php_id3v1_get_tag(php_stream *stream  TSRMLS_DC);
+/* predefined genres */
+const int ID3_GENRE_COUNT = 148;
+char *id3_genres[148] = { "Blues", "Classic Rock", "Country", "Dance", "Disco", "Funk", "Grunge", "Hip-Hop", "Jazz", "Metal", "New Age",
+		"Oldies", "Other", "Pop", "R&B", "Rap", "Reggae", "Rock", "Techno", "Industrial", "Alternative", "Ska", "Death Metal", "Pranks", 
+		"Soundtrack", "Euro-Techno", "Ambient", "Trip-Hop", "Vocal", "Jazz+Funk", "Fusion", "Trance", "Classical", "Instrumental", "Acid", 
+		"House", "Game", "Sound Clip", "Gospel", "Noise", "Alternative Rock", "Bass", "Soul", "Punk", "Space", "Meditative", "Instrumental Pop", 
+		"Instrumental Rock", "Ethnic", "Gothic", "Darkwave", "Techno-Industrial", "Electronic", "Pop-Folk", "Eurodance", "Dream", "Southern Rock", 
+		"Comedy", "Cult", "Gangsta", "Top 40", "Christian Rap", "Pop/Funk", "Jungle", "Native US", "Cabaret", "New Wave", "Psychadelic", "Rave", 
+		"Showtunes", "Trailer", "Lo-Fi", "Tribal", "Acid Punk", "Acid Jazz", "Polka", "Retro", "Musical", "Rock & Roll", "Hard Rock", "Folk", 
+		"Folk-Rock", "National Folk", "Swing", "Fast Fusion", "Bebob", "Latin", "Revival", "Celtic", "Bluegrass", "Avantgarde", "Gothic Rock", 
+		"Progressive Rock", "Psychedelic Rock", "Symphonic Rock", "Slow Rock", "Big Band", "Chorus", "Easy Listening", "Acoustic", "Humour", 
+		"Speech", "Chanson", "Opera", "Chamber Music", "Sonata", "Symphony", "Booty Bass", "Primus", "Porn Groove", "Satire", "Slow Jam", "Club", 
+		"Tango", "Samba", "Folklore", "Ballad", "Power Ballad", "Rhytmic Soul", "Freestyle", "Duet", "Punk Rock", "Drum Solo", "Acapella", 
+		"Euro-House", "Dance Hall", "Goa", "Drum & Bass", "Club-House", "Hardcore", "Terror", "Indie", "BritPop", "Negerpunk", "Polsk Punk", 
+		"Beat", "Christian Gangsta", "Heavy Metal", "Black Metal", "Crossover", "Contemporary C", "Christian Rock", "Merengue", "Salsa", 
+		"Thrash Metal", "Anime", "JPop", "SynthPop" };
+		
+/* fseek positions */
+const int ID3_SEEK_V1_TAG = -128;
+const int ID3_SEEK_V1_TITLE = -125;
+const int ID3_SEEK_V1_ARTIST = -95;
+const int ID3_SEEK_V1_ALBUM = -65;
+const int ID3_SEEK_V1_YEAR = -35;
+const int ID3_SEEK_V1_COMMENT = -31;
+const int ID3_SEEK_V1_TRACK = -2;
+const int ID3_SEEK_V1_GENRE = -1;
 
 /* 
   	Declare any global variables you may need between the BEGIN
