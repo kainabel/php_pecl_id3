@@ -748,8 +748,16 @@ short _php_id3v2_parseTextFrame(zval *return_value, id3v2Header *sHeader, id3v2F
 	/* 
 		TODO: handle encoding 
 	*/
+	/* read the frame's encoding byte */
 	encoding	= frameContent[0];
 	infoSize	= sFrameHeader->size - 1;
+	
+	/* leave, if actual content-size (framesize - 1Byte for encoding flag) 
+	   is not greater zero */
+	if (! (infoSize > 0)) {
+		return 0;
+	}
+	
 	information	= emalloc(infoSize);
 	_php_strnoffcpy(information, frameContent, 1, infoSize TSRMLS_CC);
 	
