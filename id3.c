@@ -42,14 +42,17 @@
 /* function prototypes */
 struct id3v2Header _php_id3v2_get_header(php_stream *stream TSRMLS_DC);
 struct id3v2ExtHeader _php_id3v2_get_extHeader(php_stream *stream TSRMLS_DC);
-int _php_bigEndian_to_Int(char* byteword, int bytewordlen, int synchsafe TSRMLS_DC);
+struct id3v2FrameHeader _php_id3v2_get_frameHeader(unsigned char *data, int offset, short version TSRMLS_DC);
+int _php_bigEndian_to_Int(char* byteword, int bytewordlen, short synchsafe TSRMLS_DC);
 void _php_id3v1_get_tag(php_stream *stream , zval* return_value, int version TSRMLS_DC);
 void _php_id3v2_get_tag(php_stream *stream , zval* return_value, int version TSRMLS_DC);
 static int _php_id3_get_version(php_stream *stream TSRMLS_DC);
 static int _php_id3_write_padded(php_stream *stream, zval **data, int length TSRMLS_DC);
 int _php_id3v2_get_framesOffset(php_stream *stream TSRMLS_DC);
 int _php_id3v2_get_framesLength(php_stream* stream TSRMLS_DC);
+short _php_id3v2_get_frameHeaderLength(short majorVersion TSRMLS_DC);
 int _php_deUnSynchronize(unsigned char* buf, int bufLen TSRMLS_DC);
+int _php_strnoffcpy(unsigned char *dest, unsigned char *src, int offset, int len TSRMLS_DC);
 
 /* constants */
 const int ID3V2_BASEHEADER_LENGTH = 10;
@@ -73,17 +76,17 @@ const int ID3_V2_4	= 60;
  * -1 = id3-version doesn't know about this flag
  */
 struct id3v2HdrFlags {
-	int unsynch;
-	int extHdr;
-	int experimental;
-	int footer;
-	int compression;
+	short unsynch;
+	short extHdr;
+	short experimental;
+	short footer;
+	short compression;
 };
 
 struct id3v2Header {
 	char id[4];
-	int version;
-	int revision;
+	short version;
+	short revision;
 	struct id3v2HdrFlags flags;
 	int size;
 	/* actual size of the whole tag */
@@ -99,10 +102,10 @@ struct id3v2ExtHdrFlags_TagRestrictions {
 };
 
 struct id3v2ExtHdrFlags {
-	int	update;
-	int	crcPresent;
+	short update;
+	short crcPresent;
 	int crcData;
-	int restrictions;
+	short restrictions;
 	struct id3v2ExtHdrFlags_TagRestrictions restrictionData;
 };
 
@@ -110,6 +113,26 @@ struct id3v2ExtHeader {
 	int	size;
 	int	numFlagBytes;
 	struct id3v2ExtHdrFlags flags;
+};
+
+struct id3v2FrameHeaderFlags {
+	short tagAlterPreservation;
+	short fileAlterPreservation;
+	short readOnly;
+	short groupingIdentity;
+	short groupId; /* Byte of data that follows the flags, if groupingIdentity-flag is set */
+	short compression; /* if set, dataLengthIndicator must be set, too */
+	short encryption;
+	short encryptMethod; /* Byte of data that follows the flags, if encryption-flag is set */
+	short unsynch;
+	short dataLengthIndicator;
+	int dataLength;
+};
+
+struct id3v2FrameHeader {
+	char id[5];
+	int size;
+	struct id3v2FrameHeaderFlags flags;
 };
 
 /* predefined genres */
@@ -368,23 +391,35 @@ void _php_id3v1_get_tag(php_stream *stream , zval* return_value, int version TSR
    Set an array containg all information from the id3v1 tag */
 void _php_id3v2_get_tag(php_stream *stream , zval* return_value, int version TSRMLS_DC)
 {
-	int	frameOffset,
+	int	frameDataOffset,
 		frameDataLength,
-		bytesRead = 0;
+		frameDataLeft = 0,
+		bytesRead = 0,
+		currentReadPos = 0,
+		paddingStart,
+		paddingLength;
 		
-	unsigned char *frameData;
+	int i;
+	
+	short	paddingValid = 0,
+			singleFrameLength;
+		
+	unsigned char *frameData, *frameContent;
 	
 	struct id3v2Header sHeader;
 	struct id3v2ExtHeader sExtHeader;
-	sHeader 		= _php_id3v2_get_header(stream TSRMLS_CC);
-	sExtHeader		= _php_id3v2_get_extHeader(stream TSRMLS_CC);
+	struct id3v2FrameHeader sFrameHeader;
 	
-	frameOffset		= _php_id3v2_get_framesOffset(stream TSRMLS_CC);
-	frameDataLength	= _php_id3v2_get_framesLength(stream TSRMLS_CC);
+	sHeader 			= _php_id3v2_get_header(stream TSRMLS_CC);
+	sExtHeader			= _php_id3v2_get_extHeader(stream TSRMLS_CC);
 	
-	php_stream_seek(stream, frameOffset, SEEK_SET);
-	frameData 		= emalloc(frameDataLength);
-	bytesRead 		= php_stream_read(stream, frameData, frameDataLength);
+	frameDataOffset		= _php_id3v2_get_framesOffset(stream TSRMLS_CC);
+	frameDataLength		= _php_id3v2_get_framesLength(stream TSRMLS_CC);
+	singleFrameLength	= _php_id3v2_get_frameHeaderLength(sHeader.version TSRMLS_CC);
+	
+	php_stream_seek(stream, frameDataOffset, SEEK_SET);
+	frameData 			= emalloc(frameDataLength);
+	bytesRead 			= php_stream_read(stream, frameData, frameDataLength);
 	
 	/*
 		if entire frame data is unsynched, de-unsynch it now (ID3v2.3.x)
@@ -395,14 +430,79 @@ void _php_id3v2_get_tag(php_stream *stream , zval* return_value, int version TSR
 		there exists an unsynchronised frame, while the new unsynchronisation flag in
 		the frame header [S:4.1.2] indicates unsynchronisation.
 	*/
-	
-	// TEST
-	sHeader.flags.unsynch = 1;	
 	if (sHeader.version <= 3 && sHeader.flags.unsynch == 1) {
 		frameDataLength	= _php_deUnSynchronize(frameData, frameDataLength TSRMLS_CC);
 	}
 	
+	while (currentReadPos < frameDataLength) {
+		frameDataLeft	= frameDataLength - currentReadPos;
+	
+		
+		if (frameDataLeft <= singleFrameLength + 1) {
+		/* insufficient room left for data in the frame-header -> must be padding */
+			paddingStart	= frameDataOffset;
+			paddingLength	= frameDataLeft;
+			paddingValid	= 1;
+		
+			for (i = 0; i < paddingLength; i++) {
+				if (frameData[i] != 0x00) {
+					paddingValid	= 0;
+					/* TODO: just temporarily commented */
+					//php_error_docref(NULL TSRMLS_CC, E_WARNING, "ID3v2 tag contains invalid padding - tag considered invalid");
+					break;
+				}
+			}
+			
+			/* skip rest of frame-data */
+			break;
+		}
+		
+		/* read frame-header */
+		sFrameHeader		= _php_id3v2_get_frameHeader(frameData, currentReadPos, sHeader.version TSRMLS_CC);
+		
+		/* TODO: Handle unsupported-flags case */
+		
+		/*
+		zend_printf("sFrameHeader.id: %s \n", sFrameHeader.id);
+		zend_printf("sFrameHeader.size: %d \n", sFrameHeader.size);
+		zend_printf("--------------------------\n");
+		*/
+		
+		/* set read-position forward after header was analyzed */
+		currentReadPos	+= singleFrameLength;
+		
+		/* allocate memory for actual frame-content */
+		frameContent					= emalloc(sFrameHeader.size + 1);
+		frameContent[sFrameHeader.size]	= 0; /* to make sure the buffer is zero-terminated */
+		_php_strnoffcpy(frameContent, frameData, currentReadPos, sFrameHeader.size);
+		/*
+		zend_printf("Content:\n");
+		zend_printf("Byte1: %d\n", (int)frameContent[0]);
+		zend_printf("Byte2: %d\n", (int)frameContent[1]);
+		*/
+		
+		/* set read-position forward after header was analyzed */
+		currentReadPos	+= sFrameHeader.size;
+		efree(frameContent);
+		//break; /* ONE RUN JUST FOR TESTING */
+	}
+	
 	efree(frameData);
+}
+/* }}} */
+
+/* {{{ 
+   strncpy function that supports offsets, 
+   returns the number of bytes copied */
+int _php_strnoffcpy(unsigned char *dest, unsigned char *src, int offset, int len TSRMLS_DC)
+{
+	int i;
+	
+	for (i = 0; i < len; i++) {
+		dest[i] = src[offset + i];
+	}
+	
+	return i + 1;
 }
 /* }}} */
 
@@ -905,7 +1005,7 @@ struct id3v2ExtHeader _php_id3v2_get_extHeader(php_stream *stream TSRMLS_DC)
 		Flag data length       $01
 		Restrictions           %ppqrrstt
 	
-		p - Tag size restrictions
+		p - Tag size restrictionsBIT7((int)flags) > 0 ? 1 : 0;
 	
 		00   No more than 128 frames and 1 MB total tag size.
 		01   No more than 64 frames and 128 KB total tag size.
@@ -985,6 +1085,218 @@ struct id3v2ExtHeader _php_id3v2_get_extHeader(php_stream *stream TSRMLS_DC)
 	
 	//php_stream_read(stream, &version, 1);
 	return sExtHdr;
+}
+/* }}} */
+
+/* {{{ 
+   Returns a structure that contains the frame's header-data */
+struct id3v2FrameHeader _php_id3v2_get_frameHeader(unsigned char *data, int offset, short version TSRMLS_DC)
+{
+	struct id3v2FrameHeader sFrameHeader;
+	struct id3v2FrameHeaderFlags sFlags;
+	
+	sFlags.tagAlterPreservation		= -1;
+	sFlags.fileAlterPreservation	= -1;
+	sFlags.readOnly					= -1;
+	sFlags.groupingIdentity			= -1;
+	sFlags.groupId					= -1;
+	sFlags.compression				= -1;
+	sFlags.encryption				= -1;
+	sFlags.encryptMethod			= -1;
+	sFlags.unsynch					= -1;
+	sFlags.dataLengthIndicator		= -1;
+	sFlags.dataLength				= -1;
+	
+	int	i,
+		frameDataLength	= _php_id3v2_get_frameHeaderLength(version);
+	
+	unsigned char 	*frameData,
+					*size;
+	
+	frameData	= emalloc(frameDataLength);
+	
+	/* copy relevant frame data */
+	for (i = 0; i < frameDataLength; i++) {
+		frameData[i]	= data[offset + i];
+	}
+	
+	if (version == 2) {
+		/*
+		 Frame ID  $xx xx xx (three characters)
+		 Size      $xx xx xx (24-bit integer)
+		*/
+		strncpy(sFrameHeader.id, frameData, 3);
+		size = emalloc(3);
+		size[0] = frameData[3]; size[1] = frameData[4]; size[2] = frameData[5];
+		sFrameHeader.size = _php_bigEndian_to_Int(size, 3, 0 TSRMLS_CC);
+		
+		/* no flags in 2.2 */ 
+
+	} else if (version > 2) {
+		/*
+		 Frame ID  $xx xx xx xx (four characters)
+		 Size      $xx xx xx xx (32-bit integer in 2.3, 28-bit synchsafe integer in 2.4)
+		 Flags     $xx xx
+		*/
+		
+		/* frame-id */
+		strncpy(sFrameHeader.id, frameData, 4);
+		sFrameHeader.id[4] = 0x00;
+		
+		/* frame-size */
+		size = emalloc(4);
+		size[0] = frameData[4]; 
+		size[1] = frameData[5]; 
+		size[2] = frameData[6]; 
+		size[3] = frameData[7];
+		
+		if (version == 3) {
+			/* v2.3 -> 32bit integer */
+			sFrameHeader.size = _php_bigEndian_to_Int(size, 4, 0 TSRMLS_CC);
+		} else {
+			/* v2.4+ -> 32bit synchsafe integer (28bit value) */
+			sFrameHeader.size = _php_bigEndian_to_Int(size, 4, 1 TSRMLS_CC);
+		}
+
+		/* 
+			Frame header flags
+
+			In the frame header the size descriptor is followed by two flag
+			bytes. All unused flags MUST be cleared. The first byte is for
+			'status messages' and the second byte is a format description. If an
+			unknown flag is set in the first byte the frame MUST NOT be changed
+			without that bit cleared. If an unknown flag is set in the second
+			byte the frame is likely to not be readable. Some flags in the second
+			byte indicates that extra information is added to the header. These
+			fields of extra information is ordered as the flags that indicates
+			them. The flags field is defined as follows (l and o left out because
+			ther resemblence to one and zero):
+			
+				%0abc0000 %0h00kmnp
+			
+			Some frame format flags indicate that additional information fields
+			are added to the frame. This information is added after the frame
+			header and before the frame data in the same order as the flags that
+			indicates them. I.e. the four bytes of decompressed size will precede
+			the encryption method byte. These additions affects the 'frame size'
+			field, but are not subject to encryption or compression.
+			
+			The default status flags setting for a frame is, unless stated
+			otherwise, 'preserved if tag is altered' and 'preserved if file is
+			altered', i.e. %00000000.
+			
+			Frame status flags:
+			
+			a - Tag alter preservation
+			
+				This flag tells the tag parser what to do with this frame if it is
+				unknown and the tag is altered in any way. This applies to all
+				kinds of alterations, including adding more padding and reordering
+				the frames.
+			
+				0     Frame should be preserved.
+				1     Frame should be discarded.
+			
+			
+			b - File alter preservation
+			
+				This flag tells the tag parser what to do with this frame if it is
+				unknown and the file, excluding the tag, is altered. This does not
+				apply when the audio is completely replaced with other audio data.
+			
+				0     Frame should be preserved.
+				1     Frame should be discarded.
+			
+			
+			c - Read only
+			
+				This flag, if set, tells the software that the contents of this
+				frame are intended to be read only. Changing the contents might
+				break something, e.g. a signature. If the contents are changed,
+				without knowledge of why the frame was flagged read only and
+				without taking the proper means to compensate, e.g. recalculating
+				the signature, the bit MUST be cleared.
+			
+			
+			Frame format flags:
+			
+			h - Grouping identity
+			
+				This flag indicates whether or not this frame belongs in a group
+				with other frames. If set, a group identifier byte is added to the
+				frame. Every frame with the same group identifier belongs to the
+				same group.
+			
+				0     Frame does not contain group information
+				1     Frame contains group information
+			
+			
+			k - Compression
+			
+				This flag indicates whether or not the frame is compressed.
+				A 'Data Length Indicator' byte MUST be included in the frame.
+			
+				0     Frame is not compressed.
+				1     Frame is compressed using zlib [zlib] deflate method.
+						If set, this requires the 'Data Length Indicator' bit
+						to be set as well.
+			
+			
+			m - Encryption
+			
+				This flag indicates whether or not the frame is encrypted. If set,
+				one byte indicating with which method it was encrypted will be
+				added to the frame. See description of the ENCR frame for more
+				information about encryption method registration. Encryption
+				should be done after compression. Whether or not setting this flag
+				requires the presence of a 'Data Length Indicator' depends on the
+				specific algorithm used.
+			
+				0     Frame is not encrypted.
+				1     Frame is encrypted.
+			
+			n - Unsynchronisation
+			
+				This flag indicates whether or not unsynchronisation was applied
+				to this frame. See section 6 for details on unsynchronisation.
+				If this flag is set all data from the end of this header to the
+				end of this frame has been unsynchronised. Although desirable, the
+				presence of a 'Data Length Indicator' is not made mandatory by
+				unsynchronisation.
+			
+				0     Frame has not been unsynchronised.
+				1     Frame has been unsyrchronised.
+			
+			p - Data length indicator
+			
+				This flag indicates that a data length indicator has been added to
+				the frame. The data length indicator is the value one would write
+				as the 'Frame length' if all of the frame format flags were
+				zeroed, represented as a 32 bit synchsafe integer.
+			
+				0      There is no Data Length Indicator.
+				1      A data length Indicator has been added to the frame.
+		*/
+
+		/* status flags */
+		sFlags.tagAlterPreservation		= BIT6((int)frameData[8]) > 0 ? 1 : 0;
+		sFlags.fileAlterPreservation	= BIT5((int)frameData[8]) > 0 ? 1 : 0;
+		sFlags.readOnly					= BIT4((int)frameData[8]) > 0 ? 1 : 0;
+		
+		/* format flags */
+		sFlags.groupingIdentity			= BIT6((int)frameData[9]) > 0 ? 1 : 0;
+		sFlags.compression				= BIT3((int)frameData[9]) > 0 ? 1 : 0;
+		sFlags.encryption				= BIT2((int)frameData[9]) > 0 ? 1 : 0;
+		sFlags.unsynch					= BIT1((int)frameData[9]) > 0 ? 1 : 0;
+		sFlags.dataLengthIndicator		= BIT0((int)frameData[9]) > 0 ? 1 : 0;
+		
+		sFrameHeader.flags	= sFlags;
+	}
+	
+	efree(size);
+	efree(frameData);
+	
+	return sFrameHeader;
 }
 /* }}} */
 
@@ -1087,19 +1399,20 @@ int _php_id3_get_version(php_stream *stream TSRMLS_DC)
 
 /* {{{ 
    Converts a big-endian byte-stream into an integer */
-int _php_bigEndian_to_Int(char* byteword, int bytewordlen, int synchsafe TSRMLS_DC) 
+int _php_bigEndian_to_Int(char* byteword, int bytewordlen, short synchsafe TSRMLS_DC) 
 {
 	int	intvalue	= 0,
 		i;
 	
 	for (i = 0; i < bytewordlen; i++) {
-		if (synchsafe) { /* disregard MSB, effectively 7-bit bytes */
-			intvalue = intvalue | (byteword[i] & 0x7F) << ((bytewordlen - 1 - i) * 7);
+		if (synchsafe) { 
+		/* don't care about MSB, effectively 7bit bytes */
+			intvalue = intvalue | ((int)byteword[i] & 0x7F) << ((bytewordlen - 1 - i) * 7);
 		} else {
-			intvalue += byteword[i] * (int)pow(256, (bytewordlen - 1 - i));
+			intvalue += (int)byteword[i] * (int)pow(256, (bytewordlen - 1 - i));
 		}
 	}
-	return intvalue + 10;
+	return intvalue;
 }
 /* }}} */
 
@@ -1140,6 +1453,14 @@ int _php_deUnSynchronize(unsigned char* buf, int bufLen TSRMLS_DC)
 	buf = newBuf;
 	efree(newBuf);
 	return newBufLen;
+}
+/* }}} */
+
+/* {{{ 
+   Returns the frame-header length depending on id3v2 major-version */
+short _php_id3v2_get_frameHeaderLength(short majorVersion TSRMLS_DC)
+{
+	return ((majorVersion == 2) ? 6 : 10);
 }
 /* }}} */
 
