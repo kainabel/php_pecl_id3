@@ -46,6 +46,8 @@ PHP_FUNCTION(id3_remove_tag);
 PHP_FUNCTION(id3_get_genre_list);
 PHP_FUNCTION(id3_get_genre_name);
 PHP_FUNCTION(id3_get_genre_id);
+PHP_FUNCTION(id3_get_frame_short_name);
+PHP_FUNCTION(id3_get_frame_long_name);
 
 /* 
   	Declare any global variables you may need between the BEGIN
