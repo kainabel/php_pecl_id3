@@ -917,7 +917,7 @@ int _php_bigEndian_to_Int(char* byteword, int bytewordlen, int synchsafe TSRMLS_
 		if (synchsafe) { /* disregard MSB, effectively 7-bit bytes */
 			intvalue = intvalue | (byteword[i] & 0x7F) << ((bytewordlen - 1 - i) * 7);
 		} else {
-			intvalue += byteword[i] * pow(256, (bytewordlen - 1 - i));
+			intvalue += byteword[i] * (int)pow(256, (bytewordlen - 1 - i));
 		}
 	}
 	return intvalue + 10;
