@@ -13,7 +13,7 @@
   | license@php.net so we can mail you a copy immediately.               |
   +----------------------------------------------------------------------+
   | Authors: Stephan Schmidt <schst@php.net>                             |
-  |          Carsten Lucke <c.lucke@tool-garage.de>                      |
+  |          Carsten Lucke <luckec@php.net>                              |
   +----------------------------------------------------------------------+
 */
 
@@ -46,6 +46,47 @@ PHP_FUNCTION(id3_remove_tag);
 PHP_FUNCTION(id3_get_genre_list);
 PHP_FUNCTION(id3_get_genre_name);
 PHP_FUNCTION(id3_get_genre_id);
+
+/* macros */
+#define BIT0(a)	(a & 1)
+#define BIT1(a)	(a & 2)
+#define BIT2(a)	(a & 4)
+#define BIT3(a)	(a & 8)
+#define BIT4(a)	(a & 16)
+#define BIT5(a)	(a & 32)
+#define BIT6(a)	(a & 64)
+#define BIT7(a)	(a & 128)
+
+/* constants */
+const int ID3V2_BASEHEADER_LENGTH = 10;
+const int ID3V2_IDENTIFIER_LENGTH = 3;
+/* version constants */
+const int ID3_V1_0	= 1;
+const int ID3_V1_1	= 3;
+const int ID3_V2_1	= 4;
+const int ID3_V2_2	= 12;
+const int ID3_V2_3	= 28;
+const int ID3_V2_4	= 60;
+
+/* id3v2x flags 
+ * 
+ * 1 = flag is set
+ * 0 = flag isn't set
+ * -1 = id3-version doesn't know about this flag
+ */
+struct id3v2HdrFlags {
+	int	unsynch;
+	int	extHdr;
+	int experimental;
+	int footer;
+	int compression;
+};
+
+/* prototypes */
+struct id3v2HdrFlags _php_id3v2_get_hdrFlags(php_stream *stream TSRMLS_DC);
+int _php_id3v2_get_tagLength(php_stream *stream TSRMLS_DC);
+int _php_bigEndian_to_Int(char* byteword, int bytewordlen, int synchsafe);
+zval* _php_id3v1_get_tag(php_stream *stream  TSRMLS_DC);
 
 /* 
   	Declare any global variables you may need between the BEGIN

@@ -30,13 +30,6 @@
 #include "ext/standard/flock_compat.h"
 
 /**
- * version constants
- */
-const int ID3_V1_0 = 1;
-const int ID3_V1_1 = 3;
-const int ID3_V2   = 4;
-
-/**
  * fseek positions
  */
 const int ID3_SEEK_V1_TAG = -128;
@@ -121,7 +114,10 @@ PHP_MINIT_FUNCTION(id3)
 {
 	REGISTER_LONG_CONSTANT("ID3_V1_0", ID3_V1_0, CONST_CS|CONST_PERSISTENT);
 	REGISTER_LONG_CONSTANT("ID3_V1_1", ID3_V1_1, CONST_CS|CONST_PERSISTENT);
-	REGISTER_LONG_CONSTANT("ID3_V2", ID3_V2, CONST_CS|CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("ID3_V2_1", ID3_V2_1, CONST_CS|CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("ID3_V2_2", ID3_V2_2, CONST_CS|CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("ID3_V2_3", ID3_V2_3, CONST_CS|CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("ID3_V2_4", ID3_V2_4, CONST_CS|CONST_PERSISTENT);
 	return SUCCESS;
 }
 /* }}} */
@@ -275,6 +271,14 @@ PHP_FUNCTION(id3_get_tag)
 		php_stream_close(stream);
 	}
 	return;
+}
+/* }}} */
+
+/* {{{ proto boolean id3_set_tag(string file, array tag [, int version])
+   Set an array containg all information from the id3 tag */
+zval* _php_id3v1_get_tag(php_stream *stream  TSRMLS_DC)
+{
+
 }
 /* }}} */
 
@@ -552,23 +556,34 @@ PHP_FUNCTION(id3_remove_tag)
 		return;
 	}
 
-	/* get the filedescriptor */
-	/* XXX: AVOID DOING THIS!!! */
-	if (FAILURE == php_stream_cast(stream, PHP_STREAM_AS_FD, (void **) &fd, REPORT_ERRORS)) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "id3_remove_tag() was unable to remove the existing id3-tag");
-		if (opened == 1) {
-			php_stream_close(stream);
+	/* using streams api for php5, otherwise a stream-cast with following ftruncate() */
+	#if PHP_MAJOR_VERSION >= 5
+		/* cut the stream right before TAG */
+		if(php_stream_truncate_set_size(stream, cutPos) == -1) {
+			php_error_docref(NULL TSRMLS_CC, E_WARNING, "id3_remove_tag() was unable to remove the existing id3-tag");
+			if (opened == 1) {
+				php_stream_close(stream);
+			}
+			return;
 		}
-		return;
-	}
-	/* cut the stream right before TAG */
-	if(ftruncate(fd, cutPos) == -1) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "id3_remove_tag() was unable to remove the existing id3-tag");
-		if (opened == 1) {
-			php_stream_close(stream);
+	#else
+		/* get the filedescriptor */
+		if (FAILURE == php_stream_cast(stream, PHP_STREAM_AS_FD, (void **) &fd, REPORT_ERRORS)) {
+			php_error_docref(NULL TSRMLS_CC, E_WARNING, "id3_remove_tag() was unable to remove the existing id3-tag");
+			if (opened == 1) {
+				php_stream_close(stream);
+			}
+			return;
 		}
-		return;
-	}
+		/* cut the stream right before TAG */
+		if(ftruncate(fd, cutPos) == -1) {
+			php_error_docref(NULL TSRMLS_CC, E_WARNING, "id3_remove_tag() was unable to remove the existing id3-tag");
+			if (opened == 1) {
+				php_stream_close(stream);
+			}
+			return;
+		}
+	#endif 
 
 	if(opened == 1) {
 		php_stream_close(stream);
@@ -620,11 +635,129 @@ PHP_FUNCTION(id3_get_version)
 }
 /* }}} */
 
+/* {{{ proto struct id3v2HdrFlags _php_id3v2_get_hdrFlags(php_stream *stream TSRMLS_DC)
+   Returns a structure that contains all flags of the tag-header */
+struct id3v2HdrFlags _php_id3v2_get_hdrFlags(php_stream *stream TSRMLS_DC)
+{
+	struct id3v2HdrFlags sFlags;
+	
+	char	version,
+			revision;
+			
+	unsigned char 	flags;
+	
+	int	iFlags = 0,
+		unsynch = 0,
+		hasExtHdr = 0,
+		isExperimental = 0,
+		hasFooter = 0;
+	
+	php_stream_seek(stream, ID3V2_IDENTIFIER_LENGTH, SEEK_SET);
+	php_stream_read(stream, &version, 1);
+	php_stream_read(stream, &revision, 1);
+	php_stream_read(stream, &flags, 1);
+	
+	switch (version) {
+		case 2:
+			/* %ab000000 in v2.2 
+			 * a - Unsynchronization
+			 * b - Compression
+			 */
+			sFlags.unsynch		= BIT7((int)flags) > 0 ? 1 : 0;
+			sFlags.compression	= BIT6((int)flags) > 0 ? 1 : 0;
+			break;
+
+		case 3:
+			/*
+			 * %abc00000 in v2.3
+			 * a - Unsynchronisation
+			 * b - Extended header
+			 * c - Experimental indicator
+			 */
+			sFlags.unsynch		= BIT7((int)flags) > 0 ? 1 : 0;
+			sFlags.extHdr		= BIT6((int)flags) > 0 ? 1 : 0;
+			sFlags.experimental	= BIT5((int)flags) > 0 ? 1 : 0;
+			break;
+
+		case 4:
+			/* %abcd0000 in v2.4
+			 * a - Unsynchronisation
+			 * b - Extended header
+			 * c - Experimental indicator
+			 * d - Footer present
+			 */
+			sFlags.unsynch		= BIT7((int)flags) > 0 ? 1 : 0;
+			sFlags.extHdr		= BIT6((int)flags) > 0 ? 1 : 0;
+			sFlags.experimental	= BIT5((int)flags) > 0 ? 1 : 0;
+			sFlags.footer		= BIT4((int)flags) > 0 ? 1 : 0;
+			break;
+	}
+	
+	return sFlags;
+}
+
+/* {{{ proto int _php_id3v2_get_tagLength(php_stream *stream TSRMLS_DC)
+   Returns the length in bytes of the id3v2-tag */
+int _php_id3v2_get_tagLength(php_stream *stream TSRMLS_DC)
+{
+/*
+   Overall tag structure:
+
+     +-----------------------------+
+     |      Header (10 bytes)      |
+     +-----------------------------+
+     |       Extended Header       |
+     | (variable length, OPTIONAL) |
+     +-----------------------------+
+     |   Frames (variable length)  |
+     +-----------------------------+
+     |           Padding           |
+     | (variable length, OPTIONAL) |
+     +-----------------------------+
+     | Footer (10 bytes, OPTIONAL) |
+     +-----------------------------+
+
+   In general, padding and footer are mutually exclusive.
+*/
+	char size[5];
+	int	stdHdr	= 10,
+		footer	= 0;
+	
+	struct id3v2HdrFlags sFlags	= _php_id3v2_get_hdrFlags(stream);
+	
+	if(sFlags.footer) {
+		footer = 10;
+	}
+
+	php_stream_seek(stream, ID3V2_IDENTIFIER_LENGTH + 3, SEEK_SET);
+	return stdHdr + _php_bigEndian_to_Int(size, 4, sFlags.unsynch) + footer;
+}
+/* }}} */
+
+/* {{{ proto int _php_bigEndian_to_Int(char* byteword, int bytewordlen, int synchsafe)
+   Converts a big-endian byte-stream into an integer */
+int _php_bigEndian_to_Int(char* byteword, int bytewordlen, int synchsafe) 
+{
+	int	intvalue	= 0,
+		i;
+	
+	for (i = 0; i < bytewordlen; i++) {
+		if (synchsafe) { /* disregard MSB, effectively 7-bit bytes */
+			intvalue = intvalue | (byteword[i] & 0x7F) << ((bytewordlen - 1 - i) * 7);
+		} else {
+			intvalue += byteword[i] * pow(256, (bytewordlen - 1 - i));
+		}
+	}
+	return intvalue + 10;
+}
+/* }}} */
 
 int _php_id3_get_version(php_stream *stream TSRMLS_DC)
 {
-	int version = 0;
-	char buf[4];
+	int		version = 0;
+	char 	buf[4],
+			majorVersion = 0,
+			revision = 0;
 
 	/**
 	 * check for v1
@@ -650,7 +783,23 @@ int _php_id3_get_version(php_stream *stream TSRMLS_DC)
 	php_stream_seek(stream, 0, SEEK_SET);
 	php_stream_read(stream, buf, 3);
 	if (strncmp("ID3", buf, 3) == 0) {
-		version = version | ID3_V2;
+		php_stream_read(stream, &majorVersion, 1);
+		php_stream_read(stream, &revision, 1);
+		
+		switch ((int)majorVersion) {
+			case 1:
+				version = version | ID3_V2_1;
+				break;
+			case 2:
+				version = version | ID3_V2_2;
+				break;
+			case 3:
+				version = version | ID3_V2_3;
+				break;
+			case 4:
+				version = version | ID3_V2_4;
+				break;
+		}
 	}
 	return version;
 }
