@@ -149,6 +149,7 @@ int _php_strnoffcpy(unsigned char *dest, unsigned char *src, int offset, int len
 short _php_id3v2_parseFrame(zval *return_value, id3v2Header *sHeader, id3v2FrameHeader *sFrameHeader, unsigned char *frameContent, id3v2FrameMap *map TSRMLS_DC);
 short _php_id3v2_parseUFIDFrame(zval *return_value, id3v2Header *sHeader, id3v2FrameHeader *sFrameHeader, unsigned char *frameContent, id3v2FrameMap *map TSRMLS_DC);
 short _php_id3v2_parseTextFrame(zval *return_value, id3v2Header *sHeader, id3v2FrameHeader *sFrameHeader, unsigned char *frameContent, id3v2FrameMap *map TSRMLS_DC);
+short _php_id3v2_parseLinkFrame(zval *return_value, id3v2Header *sHeader, id3v2FrameHeader *sFrameHeader, unsigned char *frameContent, id3v2FrameMap *map TSRMLS_DC);
 void _php_id3v2_buildFrameMap(id3v2FrameMap *map TSRMLS_DC);
 void _php_id3v2_addFrameMap(id3v2FrameMap *stack, long offset, char *frameId, char* arrayKey, char *descr TSRMLS_DC);
 char *_php_id3v2_getKeyForFrame(id3v2FrameMap *stack, char *frameId TSRMLS_DC);
@@ -679,12 +680,14 @@ void _php_id3v2_get_tag(php_stream *stream , zval* return_value, int version TSR
 				/* delegate parsing the frame-content to specialized methods */
 				if (! _php_id3v2_parseFrame(return_value, &sHeader, &sFrameHeader, frameContent, map TSRMLS_CC)) {
 					/* TODO: should this throw a php-notice??? */
-					//zend_printf("Parsing frame %s skipped ...\n", sFrameHeader.id); /* DEBUG */
+					//zend_printf("[DEBUG] Parsing frame %s skipped ...\n", sFrameHeader.id);
 				}
 				
 				/* set read-position forward after header was analyzed */
 				currentReadPos	+= sFrameHeader.size;
 				efree(frameContent);
+			} else {
+				//zend_printf("[DEBUG] Frame %s skipped (size zero)\n", sFrameHeader.id);
 			}
 		} else {
 		/* padding found */
@@ -722,21 +725,25 @@ short _php_id3v2_parseFrame(zval *return_value, id3v2Header *sHeader, id3v2Frame
 	
 	/* groupingIdentity is not yet supported by this extension */
 	if (sFrameHeader->flags.groupingIdentity == 1) {
+		//zend_printf("[DEBUG] NOT SUPPORTED A: %s\n", sFrameHeader->id);
 		return 0;	
 	}
 	
 	/* compression is not yet supported by this extension */
 	if (sFrameHeader->flags.compression == 1) {
+		//zend_printf("[DEBUG] NOT SUPPORTED B: %s\n", sFrameHeader->id);
 		return 0;	
 	}
 	
 	/* encryption is not yet supported by this extension */
 	if (sFrameHeader->flags.encryption == 1) {
+		//zend_printf("[DEBUG] NOT SUPPORTED C: %s\n", sFrameHeader->id);
 		return 0;	
 	}
 	
 	/* dataLengthIndicator-flag is not yet supported by this extension */
 	if (sFrameHeader->flags.dataLengthIndicator == 1) {
+		//zend_printf("[DEBUG] NOT SUPPORTED D: %s\n", sFrameHeader->id);
 		return 0;	
 	}
 	
@@ -759,10 +766,15 @@ short _php_id3v2_parseFrame(zval *return_value, id3v2Header *sHeader, id3v2Frame
 	}
 	 
 	/* handle text-frames (T000 - TZZZ) 
-	
 		test whether frame-id start with "T" -> 0x54 == "T" */
 	if (sFrameHeader->id[0] == 0x54) {
 		return _php_id3v2_parseTextFrame(return_value, sHeader, sFrameHeader, frameContent, map TSRMLS_CC);
+	}
+	 
+	/* handle url/link-frames (W000 - WZZZ) 
+		test whether frame-id start with "W" -> 0x57 == "W" */
+	if (sFrameHeader->id[0] == 0x57) {
+		return _php_id3v2_parseLinkFrame(return_value, sHeader, sFrameHeader, frameContent, map TSRMLS_CC);
 	}
 
 	return 0;
@@ -876,6 +888,61 @@ short _php_id3v2_parseTextFrame(zval *return_value, id3v2Header *sHeader, id3v2F
 	}
 	
 	efree(information);
+	return 0;
+}
+/* }}} */
+
+/* {{{ 
+   Parses url/link-frames (W000 - WZZZ)
+    
+	returns 1 if frame-content was successfully added to the return_value, otherwise 0 */
+short _php_id3v2_parseLinkFrame(zval *return_value, id3v2Header *sHeader, id3v2FrameHeader *sFrameHeader, unsigned char *frameContent, id3v2FrameMap *map TSRMLS_DC)
+{
+	/*
+		With these frames dynamic data such as webpages with touring
+		information, price information or plain ordinary news can be added to
+		the tag. There may only be one URL [URL] link frame of its kind in an
+		tag, except when stated otherwise in the frame description. If the
+		text string is followed by a string termination, all the following
+		information should be ignored and not be displayed. All URL link
+		frame identifiers begins with "W". Only URL link frame identifiers
+		begins with "W", except for "WXXX". All URL link frames have the
+		following format:
+		
+			<Header for 'URL link frame', ID: "W000" - "WZZZ", excluding "WXXX"
+			described in 4.3.2.>
+			URL              <text string>
+	*/
+	char	*arrayKeyName;
+	int		i;
+	
+	/* leave, if actual content-size (framesize - 1Byte for encoding flag) 
+	   is not greater zero */
+	if (! (sFrameHeader->size > 0)) {
+		return 0;
+	}
+	
+	/*  */
+	if (strncmp(sFrameHeader->id, "WXX", 3) != 0) {
+		/* iterate through frameMap and check if the frames id matches one listed this map
+		   if a matching pair is found, the frame's content will be added to the PHP result array */
+		for (i = 0; i < ID3V2_FRAMEMAP_ENTRIES; i++) {
+			if (strcmp(sFrameHeader->id, map[i].id) == 0) {
+				/* retrieve array-key for this frame's entry in the PHP result array */
+				if ((arrayKeyName = _php_id3v2_getKeyForFrame(map, map[i].id TSRMLS_CC)) == NULL) {
+					return 0;
+				}
+				/* add information to the result array */
+				add_assoc_stringl(return_value, arrayKeyName, frameContent, sFrameHeader->size, 1);
+				return 1;
+			}
+		}
+	} else {
+		/* 
+			TODO: handle WXX[X] frame 
+		*/
+	}
+	
 	return 0;
 }
 /* }}} */
