@@ -61,7 +61,8 @@ PHP_FUNCTION(id3_get_genre_id);
 struct id3v2HdrFlags _php_id3v2_get_hdrFlags(php_stream *stream TSRMLS_DC);
 int _php_id3v2_get_tagLength(php_stream *stream TSRMLS_DC);
 int _php_bigEndian_to_Int(char* byteword, int bytewordlen, int synchsafe);
-void _php_id3v1_get_tag(php_stream *stream , zval* retval TSRMLS_DC);
+void _php_id3v1_get_tag(php_stream *stream , zval* return_value, int version TSRMLS_DC);
+void _php_id3v2_get_tag(php_stream *stream , zval* return_value, int version TSRMLS_DC);
 static int _php_id3_get_version(php_stream *stream TSRMLS_DC);
 static int _php_id3_write_padded(php_stream *stream, zval **data, int length TSRMLS_DC);
 
@@ -97,7 +98,7 @@ char *id3_genres[148] = { "Blues", "Classic Rock", "Country", "Dance", "Disco", 
 		"Soundtrack", "Euro-Techno", "Ambient", "Trip-Hop", "Vocal", "Jazz+Funk", "Fusion", "Trance", "Classical", "Instrumental", "Acid", 
 		"House", "Game", "Sound Clip", "Gospel", "Noise", "Alternative Rock", "Bass", "Soul", "Punk", "Space", "Meditative", "Instrumental Pop", 
 		"Instrumental Rock", "Ethnic", "Gothic", "Darkwave", "Techno-Industrial", "Electronic", "Pop-Folk", "Eurodance", "Dream", "Southern Rock", 
-		"Comedy", "Cult", "Gangsta", "Top 40", "Christian Rap", "Pop/Funk", "Jungle", "Native US", "Cabaret", "New Wave", "Psychadelic", "Rave", 
+		"Comedy", "Cult", "Gangsta", "Top 40", "Christian Rap", "Pop/Funk", "Jungle", "Native US", "Cabaret", "New Wave", "Psychedelic", "Rave", 
 		"Showtunes", "Trailer", "Lo-Fi", "Tribal", "Acid Punk", "Acid Jazz", "Polka", "Retro", "Musical", "Rock & Roll", "Hard Rock", "Folk", 
 		"Folk-Rock", "National Folk", "Swing", "Fast Fusion", "Bebob", "Latin", "Revival", "Celtic", "Bluegrass", "Avantgarde", "Gothic Rock", 
 		"Progressive Rock", "Psychedelic Rock", "Symphonic Rock", "Slow Rock", "Big Band", "Chorus", "Easy Listening", "Acoustic", "Humour", 

@@ -113,7 +113,7 @@ PHP_FUNCTION(id3_get_tag)
 {
 	zval *arg;
 	php_stream *stream;
-	int version = ID3_V1_0;
+	int version = ID3_V2_4;
 	int opened = 0;
 	char tag[4];
 	
@@ -124,7 +124,8 @@ PHP_FUNCTION(id3_get_tag)
 	/**
 	 * v2.0 will be implemented at later point
 	 */
-	if (version != ID3_V1_0 && version != ID3_V1_1) {
+	//if (version != ID3_V1_0 && version != ID3_V1_1) {
+	if (!(version == ID3_V1_0 || version == ID3_V1_1 || version == ID3_V2_1 || version == ID3_V2_2 || version == ID3_V2_3 || version == ID3_V2_4)) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "id3_get_tag(): Unsupported version given");
 		return;
 	}
@@ -161,9 +162,14 @@ PHP_FUNCTION(id3_get_tag)
 		return;
 	}
 	
+	/* initialize associative return array */
 	array_init(return_value);
-	
-	_php_id3v1_get_tag(stream, return_value TSRMLS_CC);
+	/* call function to fill return-array depending on version */
+	if (version == ID3_V1_0 || version == ID3_V1_1) {
+		_php_id3v1_get_tag(stream, return_value, version TSRMLS_CC);
+	} else {
+		_php_id3v2_get_tag(stream, return_value, version TSRMLS_CC);
+	}
 
 	if (opened == 1) {
 		php_stream_close(stream);
@@ -174,11 +180,10 @@ PHP_FUNCTION(id3_get_tag)
 
 /* {{{ proto zval* _php_id3v1_get_tag(php_stream *stream , zval* return_value TSRMLS_DC)
    Set an array containg all information from the id3v1 tag */
-void _php_id3v1_get_tag(php_stream *stream , zval* return_value TSRMLS_DC)
+void _php_id3v1_get_tag(php_stream *stream , zval* return_value, int version TSRMLS_DC)
 {
 	unsigned char genre;
 	unsigned int bytes_read;
-	int 	version = ID3_V1_0;
 	char	title[31],
 			artist[31],
 			album[31],
@@ -245,6 +250,14 @@ void _php_id3v1_get_tag(php_stream *stream , zval* return_value TSRMLS_DC)
 	/* genre */
 	php_stream_read(stream, &genre, 1);
 	add_assoc_long(return_value, "genre", (long)genre);
+}
+/* }}} */
+
+/* {{{ proto zval* _php_id3v1_get_tag(php_stream *stream , zval* return_value TSRMLS_DC)
+   Set an array containg all information from the id3v1 tag */
+void _php_id3v2_get_tag(php_stream *stream , zval* return_value, int version TSRMLS_DC)
+{
+	zend_printf("Sorry, not implemented yet");
 }
 /* }}} */
 
