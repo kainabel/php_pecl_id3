@@ -276,8 +276,6 @@ PHP_FUNCTION(id3_get_tag)
 	int	version = ID3_BEST,
 		versionCheck = 0,
 		opened = 0;
-		
-	char tag[4];
 	
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "z|l", &arg, &version) == FAILURE) {
 		return;
@@ -287,7 +285,6 @@ PHP_FUNCTION(id3_get_tag)
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "id3_get_tag(): Unsupported version given");
 		return;
 	}
-
 
 	switch(Z_TYPE_P(arg)) {
 		case IS_STRING:
@@ -302,50 +299,47 @@ PHP_FUNCTION(id3_get_tag)
 			return;
 	}
 
-	/**
-	 * invalid file
-	 */
+	/* invalid file */
 	if(!stream) {
 		RETURN_FALSE;
+	}
+	
+	/* check if a tag exists at all */
+	versionCheck = _php_id3_get_version(stream TSRMLS_CC);
+	if (versionCheck == 0 || versionCheck == ID3_V2_1) {
+		/* stream contains no tag or only an unsupported v2.1 tag */
+		php_error_docref(NULL TSRMLS_CC, E_WARNING, "id3_get_tag() no or unsupported id3 tag found");
+		if (opened == 1) {
+			php_stream_close(stream);
+		}
+		return;
 	}
 	
 	/* initialize associative return array */
 	array_init(return_value);
 	
+	/* set version to the best one available in the file, if ID3_BEST or nothing was specified as 2nd parameter */
 	if (version == ID3_BEST) {
-		versionCheck = _php_id3_get_version(stream);
-		if (versionCheck == 0 || versionCheck == ID3_V2_1) {
-			/* stream contains no tag or only an unsupported v2.1 tag */
-			php_error_docref(NULL TSRMLS_CC, E_WARNING, "id3_get_tag() no or unsupported id3 tag found");
-			if (opened == 1) {
-				php_stream_close(stream);
-			}
-			return;
-		}
-		
-		if (versionCheck | 0x04) {
+		if (versionCheck & 0x08) {
 		/* read id3v2 tag */
 			version = versionCheck & 0xFC; /* see version constants to understand this */
 		} else {
 		/* read id3v1 tag */
 			version = versionCheck & 0x03; /* see version constants to understand this */
 		}
-	}
-	
-	/* call function to fill return-array depending on version */
-	if (version == ID3_V1_0 || version == ID3_V1_1) {
-		/* check whether id3v1-tag exists */
-		php_stream_seek(stream, ID3_SEEK_V1_TAG, SEEK_END);
-		php_stream_read(stream, tag, 3);
-	
-		if (strncmp(tag, "TAG", 3) != 0) {
-			php_error_docref(NULL TSRMLS_CC, E_WARNING, "id3_get_tag() no ID3v1 tag found");
+	} else {
+	/* a specific tag version was requested - lets check if the tag contains this version */
+		if ((version & versionCheck) != version) {
+			php_error_docref(NULL TSRMLS_CC, E_WARNING, "id3_get_tag() specified tag-version not available - try ID3_BEST");
 			if (opened == 1) {
 				php_stream_close(stream);
 			}
 			return;
 		}
-		
+	}
+	
+	/* call function to fill return-array depending on version */
+	if (version == ID3_V1_0 || version == ID3_V1_1) {
 		_php_id3v1_get_tag(stream, return_value, version TSRMLS_CC);
 	} else {
 		_php_id3v2_get_tag(stream, return_value, version TSRMLS_CC);
