@@ -18,7 +18,7 @@ require_once 'PEAR/PackageFileManager.php';
 /**
  * current version
  */
-$version = '0.1';
+$version = '0.2';
 
 /**
  * current state
@@ -29,7 +29,7 @@ $state = 'alpha';
  * release notes
  */
 $notes = <<<EOT
-initial pecl release
+added support to read id3v2 text- and url-frames
 EOT;
 
 /**
@@ -37,7 +37,7 @@ EOT;
  */
 $description = <<<EOT
 id3 enables to to retrieve and update information from ID3 tags in
-MP3 files. It supports version 1.0 and version 1.1.
+MP3 files. It supports version 1.0, 1.1 and 2.2+ (only reading text- and url-frames at the moment).
 EOT;
 
 $package = new PEAR_PackageFileManager();
@@ -71,7 +71,7 @@ $package->addRole ('m4', 'src');
 $package->addRole ('w32', 'src');
 $package->addConfigureOption ('enable-id3', 'Enable id3 support?', 'autodetect');
 $package->addMaintainer('schst', 'lead', 'Stephan Schmidt', 'schst@php-tools.net');
-$package->addMaintainer('luckec', 'developer', 'Carsten Lucke', 'luckec@php.net');
+$package->addMaintainer('luckec', 'lead', 'Carsten Lucke', 'luckec@php.net');
 $package->addDependency('php', '4.3.0', 'ge', 'php', false);
 
 if (isset($_GET['make']) || (isset($_SERVER['argv'][1]) && $_SERVER['argv'][1] == 'make')) {

@@ -4,7 +4,7 @@
   <name>id3</name>
   <summary>Functions to read and write ID3 tags in MP3 files.</summary>
   <description>id3 enables to to retrieve and update information from ID3 tags in
-MP3 files. It supports version 1.0 and version 1.1.</description>
+MP3 files. It supports version 1.0, 1.1 and 2.2+ (only reading text- and url-frames at the moment).</description>
   <maintainers>
     <maintainer>
       <user>schst</user>
@@ -16,15 +16,15 @@ MP3 files. It supports version 1.0 and version 1.1.</description>
       <user>luckec</user>
       <name>Carsten Lucke</name>
       <email>luckec@php.net</email>
-      <role>developer</role>
+      <role>lead</role>
     </maintainer>
   </maintainers>
   <release>
-    <version>0.1</version>
-    <date>2004-06-18</date>
+    <version>0.2</version>
+    <date>2004-09-24</date>
     <license>PHP License</license>
     <state>alpha</state>
-    <notes>initial pecl release</notes>
+    <notes>added support to read id3v2 text- and url-frames</notes>
     <deps>
       <dep type="php" rel="ge" version="4.3.0" optional="no"/>
     </deps>
@@ -38,24 +38,32 @@ MP3 files. It supports version 1.0 and version 1.1.</description>
         <file role="doc" name="example_get_genre_name.php"/>
         <file role="doc" name="example_set.php"/>
         <file role="doc" name="example_version.php"/>
-       </dir>
-       <file role="doc" name="CREDITS"/>
-       <file role="doc" name="EXPERIMENTAL"/>
-       <file role="doc" name="TODO"/>
+       </dir> <!-- examples -->
        <file role="src" name="config.m4"/>
        <file role="src" name="config.w32"/>
+       <file role="data" name="CREDITS"/>
+       <file role="data" name="EXPERIMENTAL"/>
        <file role="src" name="id3.c"/>
+       <file role="data" name="id3.dsp"/>
        <file role="src" name="php_id3.h"/>
-      </dir>
+       <file role="data" name="TODO"/>
+      </dir> <!-- / -->
     </filelist>
   </release>
   <changelog>
     <release>
       <version>0.1</version>
-      <date>2004-06-18</date>
+      <date>2004-09-24</date>
       <license>PHP License</license>
       <state>alpha</state>
-      <notes>initial pecl release</notes>
+      <notes>added support to read id3v2 text- and url-frames</notes>
+    </release>
+    <release>
+      <version>0.2</version>
+      <date>2004-09-24</date>
+      <license>PHP License</license>
+      <state>alpha</state>
+      <notes>added support to read id3v2 text- and url-frames</notes>
     </release>
   </changelog>
 </package>

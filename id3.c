@@ -46,6 +46,7 @@ const int ID3V2_BASEHEADER_LENGTH = 10;
 const int ID3V2_IDENTIFIER_LENGTH = 3;
 
 /* version constants */
+const int ID3_BEST	= 0;
 const int ID3_V1_0	= 1;
 const int ID3_V1_1	= 3;
 const int ID3_V2_1	= 4;
@@ -234,6 +235,7 @@ ZEND_GET_MODULE(id3)
  */
 PHP_MINIT_FUNCTION(id3)
 {
+	REGISTER_LONG_CONSTANT("ID3_BEST", ID3_BEST, CONST_CS|CONST_PERSISTENT);
 	REGISTER_LONG_CONSTANT("ID3_V1_0", ID3_V1_0, CONST_CS|CONST_PERSISTENT);
 	REGISTER_LONG_CONSTANT("ID3_V1_1", ID3_V1_1, CONST_CS|CONST_PERSISTENT);
 	REGISTER_LONG_CONSTANT("ID3_V2_1", ID3_V2_1, CONST_CS|CONST_PERSISTENT);
@@ -259,7 +261,7 @@ PHP_MINFO_FUNCTION(id3)
 {
 	php_info_print_table_start();
 	php_info_print_table_header(2, "id3 support", "enabled");
-	php_info_print_table_row(2, "Supported versions", "v1.0, v1.1");
+	php_info_print_table_row(2, "Supported versions", "v1.0, v1.1, v2.2+ (partly)");
 	php_info_print_table_end();
 }
 /* }}} */
@@ -270,19 +272,18 @@ PHP_FUNCTION(id3_get_tag)
 {
 	zval *arg;
 	php_stream *stream;
-	int version = ID3_V1_1;
-	int opened = 0;
+	
+	int	version = ID3_BEST,
+		versionCheck = 0,
+		opened = 0;
+		
 	char tag[4];
 	
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "z|l", &arg, &version) == FAILURE) {
 		return;
 	}
 
-	/**
-	 * v2.0 will be implemented at later point
-	 */
-	//if (version != ID3_V1_0 && version != ID3_V1_1) {
-	if (!(version == ID3_V1_0 || version == ID3_V1_1 || version == ID3_V2_1 || version == ID3_V2_2 || version == ID3_V2_3 || version == ID3_V2_4)) {
+	if (!(version == ID3_BEST || version == ID3_V1_0 || version == ID3_V1_1 || version == ID3_V2_2 || version == ID3_V2_3 || version == ID3_V2_4)) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "id3_get_tag(): Unsupported version given");
 		return;
 	}
@@ -310,6 +311,27 @@ PHP_FUNCTION(id3_get_tag)
 	
 	/* initialize associative return array */
 	array_init(return_value);
+	
+	if (version == ID3_BEST) {
+		versionCheck = _php_id3_get_version(stream);
+		if (versionCheck == 0 || versionCheck == ID3_V2_1) {
+			/* stream contains no tag or only an unsupported v2.1 tag */
+			php_error_docref(NULL TSRMLS_CC, E_WARNING, "id3_get_tag() no or unsupported id3 tag found");
+			if (opened == 1) {
+				php_stream_close(stream);
+			}
+			return;
+		}
+		
+		if (versionCheck | 0x04) {
+		/* read id3v2 tag */
+			version = versionCheck & 0xFC; /* see version constants to understand this */
+		} else {
+		/* read id3v1 tag */
+			version = versionCheck & 0x03; /* see version constants to understand this */
+		}
+	}
+	
 	/* call function to fill return-array depending on version */
 	if (version == ID3_V1_0 || version == ID3_V1_1) {
 		/* check whether id3v1-tag exists */
