@@ -40,14 +40,14 @@
 #define BIT7(a)	(a & 128)
 
 /* function prototypes */
-struct id3v2HdrFlags _php_id3v2_get_hdrFlags(php_stream *stream TSRMLS_DC);
-struct id3v2ExtHdrFlags _php_id3v2_get_extHdrFlags(php_stream *stream TSRMLS_DC);
-int _php_id3v2_get_tagLength(php_stream *stream TSRMLS_DC);
+struct id3v2Header _php_id3v2_get_header(php_stream *stream TSRMLS_DC);
+struct id3v2ExtHeader _php_id3v2_get_extHeader(php_stream *stream TSRMLS_DC);
 int _php_bigEndian_to_Int(char* byteword, int bytewordlen, int synchsafe TSRMLS_DC);
 void _php_id3v1_get_tag(php_stream *stream , zval* return_value, int version TSRMLS_DC);
 void _php_id3v2_get_tag(php_stream *stream , zval* return_value, int version TSRMLS_DC);
 static int _php_id3_get_version(php_stream *stream TSRMLS_DC);
 static int _php_id3_write_padded(php_stream *stream, zval **data, int length TSRMLS_DC);
+int _php_id3v2_get_framesOffset(php_stream *stream TSRMLS_DC);
 
 /* constants */
 const int ID3V2_BASEHEADER_LENGTH = 10;
@@ -60,41 +60,51 @@ const int ID3_V2_2	= 12;
 const int ID3_V2_3	= 28;
 const int ID3_V2_4	= 60;
 
-/* id3v2x flags 
+/* id3v2x header flags 
+ *
+ * The structure of those flags differs in different versions,
+ * see struct id3v2HdrFlags _php_id3v2_get_hdrFlags(php_stream *stream TSRMLS_DC)
+ * for more details
  * 
  * 1 = flag is set
  * 0 = flag isn't set
  * -1 = id3-version doesn't know about this flag
  */
 struct id3v2HdrFlags {
-	int	unsynch;
-	int	extHdr;
+	int unsynch;
+	int extHdr;
 	int experimental;
 	int footer;
 	int compression;
 };
 
-/* id3v2x extended-header flags 
- * 
- * 1 = flag is set
- * 0 = flag isn't set
- * -1 = id3-version doesn't know about this flag
- */
-struct id3v2ExtHdrFlags {
-	int	unsynch;
-	int	extHdr;
-	int experimental;
-	int footer;
-	int compression;
-};
-
-/* id3v2.x extended-header
-*
- * Extended header size   4 * %0xxxxxxx
- * Number of flag bytes       $01
- * Extended Flags             $xx
- */
 struct id3v2Header {
+	char id[4];
+	int version;
+	int revision;
+	struct id3v2HdrFlags flags;
+	int size;
+	/* actual size of the whole tag */
+	int effSize;
+};
+
+struct id3v2ExtHdrFlags_TagRestrictions {
+	int tagSize;
+	int textEncoding;
+	int textFieldSize;
+	int imageEncoding;
+	int imageSize;
+};
+
+struct id3v2ExtHdrFlags {
+	int	update;
+	int	crcPresent;
+	int crcData;
+	int restrictions;
+	struct id3v2ExtHdrFlags_TagRestrictions restrictionData;
+};
+
+struct id3v2ExtHeader {
 	int	size;
 	int	numFlagBytes;
 	struct id3v2ExtHdrFlags flags;
@@ -235,7 +245,7 @@ PHP_FUNCTION(id3_get_tag)
 			opened = 1;
 			break;
 		case IS_RESOURCE:
-			stream = php_stream_from_zval(stream, &arg)
+			php_stream_from_zval(stream, &arg)
 			break;
 		default:
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "id3_get_tag() expects parameter 1 to be string or resource");
@@ -358,8 +368,24 @@ void _php_id3v2_get_tag(php_stream *stream , zval* return_value, int version TSR
 {
 	zend_printf("Sorry, not implemented yet");
 	
-//	struct id3v2ExtHdrFlags sBaseFlags = _php_id3v2_get_hdrFlags(stream TSRMLS_CC);
+	int frameOffset = -1;
 	
+	struct id3v2Header sHeader;
+	
+	sHeader 		= _php_id3v2_get_header(stream TSRMLS_CC);
+	frameOffset		= _php_id3v2_get_framesOffset(stream TSRMLS_CC);
+	
+	zend_printf("\n----------\nIdentifier: %s\n", sHeader.id);
+	zend_printf("Version: ID3v2.%d.%d\n", sHeader.version, sHeader.revision);
+	zend_printf("Header-Size: %d\n", sHeader.size);
+	zend_printf("Flags:\n");
+	zend_printf("  unsynch: %d\n", sHeader.flags.unsynch);
+	zend_printf("  extHdr: %d\n", sHeader.flags.extHdr);
+	zend_printf("  experimental: %d\n", sHeader.flags.experimental);
+	zend_printf("  footer: %d\n", sHeader.flags.footer);
+	zend_printf("  compression: %d\n----------\n", sHeader.flags.compression);
+	
+	zend_printf("Framedata-Offset: %d \n", frameOffset);
 }
 /* }}} */
 
@@ -397,7 +423,7 @@ PHP_FUNCTION(id3_set_tag)
 			opened = 1;
 			break;
 		case IS_RESOURCE:
-			stream = php_stream_from_zval(stream, &arg)
+			php_stream_from_zval(stream, &arg)
 			break;
 		default:
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "id3_set_tag() expects parameter 1 to be string or resource");
@@ -607,7 +633,7 @@ PHP_FUNCTION(id3_remove_tag)
 			opened = 1;
 			break;
 		case IS_RESOURCE:
-			stream = php_stream_from_zval(stream, &arg)
+			php_stream_from_zval(stream, &arg)
 			break;
 		default:
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "id3_remove_tag() expects parameter 1 to be string or resource");
@@ -693,7 +719,7 @@ PHP_FUNCTION(id3_get_version)
 			opened = 1;
 			break;
 		case IS_RESOURCE:
-			stream = php_stream_from_zval(stream, &arg)
+			php_stream_from_zval(stream, &arg)
 			break;
 		default:
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "id3_get_version() expects parameter 1 to be string or resource");
@@ -716,83 +742,9 @@ PHP_FUNCTION(id3_get_version)
 }
 /* }}} */
 
-/* {{{ proto struct id3v2HdrFlags _php_id3v2_get_hdrFlags(php_stream *stream TSRMLS_DC)
-   Returns a structure that contains all flags of the tag-header */
-struct id3v2HdrFlags _php_id3v2_get_hdrFlags(php_stream *stream TSRMLS_DC)
-{
-	struct id3v2HdrFlags sFlags;
-	
-	char	version,
-			revision;
-			
-	unsigned char 	flags;
-	
-	int	iFlags = 0,
-		unsynch = 0,
-		hasExtHdr = 0,
-		isExperimental = 0,
-		hasFooter = 0;
-	
-	php_stream_seek(stream, ID3V2_IDENTIFIER_LENGTH, SEEK_SET);
-	php_stream_read(stream, &version, 1);
-	php_stream_read(stream, &revision, 1);
-	php_stream_read(stream, &flags, 1);
-	
-	switch (version) {
-		case 2:
-			/* %ab000000 in v2.2 
-			 * a - Unsynchronization
-			 * b - Compression
-			 */
-			sFlags.unsynch		= BIT7((int)flags) > 0 ? 1 : 0;
-			sFlags.compression	= BIT6((int)flags) > 0 ? 1 : 0;
-			break;
-
-		case 3:
-			/*
-			 * %abc00000 in v2.3
-			 * a - Unsynchronisation
-			 * b - Extended header
-			 * c - Experimental indicator
-			 */
-			sFlags.unsynch		= BIT7((int)flags) > 0 ? 1 : 0;
-			sFlags.extHdr		= BIT6((int)flags) > 0 ? 1 : 0;
-			sFlags.experimental	= BIT5((int)flags) > 0 ? 1 : 0;
-			break;
-
-		case 4:
-			/* %abcd0000 in v2.4
-			 * a - Unsynchronisation
-			 * b - Extended header
-			 * c - Experimental indicator
-			 * d - Footer present
-			 */
-			sFlags.unsynch		= BIT7((int)flags) > 0 ? 1 : 0;
-			sFlags.extHdr		= BIT6((int)flags) > 0 ? 1 : 0;
-			sFlags.experimental	= BIT5((int)flags) > 0 ? 1 : 0;
-			sFlags.footer		= BIT4((int)flags) > 0 ? 1 : 0;
-			break;
-	}
-	
-	return sFlags;
-}
-/* }}} */
-
-/* {{{ proto struct id3v2HdrFlags _php_id3v2_get_hdrFlags(php_stream *stream TSRMLS_DC)
-   Returns a structure that contains all flags of the tag-header */
-struct id3v2ExtHdrFlags _php_id3v2_get_extHdrFlags(php_stream *stream TSRMLS_DC)
-{
-	struct id3v2ExtHdrFlags sFlags;
-	
-	php_stream_seek(stream, ID3V2_BASEHEADER_LENGTH, SEEK_SET);
-	//php_stream_read(stream, &version, 1);
-	return sFlags;
-}
-/* }}} */
-
-/* {{{ proto int _php_id3v2_get_tagLength(php_stream *stream TSRMLS_DC)
-   Returns the length in bytes of the id3v2-tag */
-int _php_id3v2_get_tagLength(php_stream *stream TSRMLS_DC)
+/* {{{ proto struct id3v2Header _php_id3v2_get_header(php_stream *stream TSRMLS_DC)
+   Returns a structure that contains the header-data */
+struct id3v2Header _php_id3v2_get_header(php_stream *stream TSRMLS_DC)
 {
 /*
    Overall tag structure:
@@ -810,6 +762,14 @@ int _php_id3v2_get_tagLength(php_stream *stream TSRMLS_DC)
      +-----------------------------+
      | Footer (10 bytes, OPTIONAL) |
      +-----------------------------+
+   
+   The first part of the ID3v2 tag is the 10 byte tag header, laid out
+   as follows:
+
+     ID3v2/file identifier      "ID3"
+     ID3v2 version              $04 00
+     ID3v2 flags                %abcd0000
+     ID3v2 size             4 * %0xxxxxxx
 
    In general, padding and footer are mutually exclusive.
    
@@ -818,18 +778,196 @@ int _php_id3v2_get_tagLength(php_stream *stream TSRMLS_DC)
    footer is present this equals to ('total size' - 20) bytes, otherwise
    ('total size' - 10) bytes.
 */
-	char size[5];
-	int	stdHdr	= 10,
-		footer	= 0;
+
+	struct id3v2Header sHeader;
+
+	char	version,
+			revision,
+			size[5];
+			
+	unsigned char flags;
 	
-	struct id3v2HdrFlags sFlags	= _php_id3v2_get_hdrFlags(stream TSRMLS_CC);
+	int footer = 0;
 	
-	if(sFlags.footer) {
+	php_stream_seek(stream, 0, SEEK_SET);
+	php_stream_read(stream, sHeader.id, 3);
+	php_stream_read(stream, &version, 1);
+	php_stream_read(stream, &revision, 1);
+	php_stream_read(stream, &flags, 1);
+	php_stream_read(stream, size, 4);
+	
+	sHeader.version = (int)version;
+	sHeader.revision = (int)revision;
+	
+	switch (version) {
+		case 2:
+			/* %ab000000 in v2.2 
+			 * a - Unsynchronization
+			 * b - Compression
+			 */
+			sHeader.flags.unsynch		= BIT7((int)flags) > 0 ? 1 : 0;
+			sHeader.flags.extHdr		= -1;
+			sHeader.flags.experimental	= -1;
+			sHeader.flags.footer		= -1;
+			sHeader.flags.compression	= BIT6((int)flags) > 0 ? 1 : 0;
+			break;
+
+		case 3:
+			/*
+			 * %abc00000 in v2.3
+			 * a - Unsynchronisation
+			 * b - Extended header
+			 * c - Experimental indicator
+			 */
+			sHeader.flags.unsynch		= BIT7((int)flags) > 0 ? 1 : 0;
+			sHeader.flags.extHdr		= BIT6((int)flags) > 0 ? 1 : 0;
+			sHeader.flags.experimental	= BIT5((int)flags) > 0 ? 1 : 0;
+			sHeader.flags.footer		= -1;
+			sHeader.flags.compression	= -1;
+			break;
+
+		case 4:
+			/* %abcd0000 in v2.4
+			 * a - Unsynchronisation
+			 * b - Extended header
+			 * c - Experimental indicator
+			 * d - Footer present
+			 */
+			sHeader.flags.unsynch		= BIT7((int)flags) > 0 ? 1 : 0;
+			sHeader.flags.extHdr		= BIT6((int)flags) > 0 ? 1 : 0;
+			sHeader.flags.experimental	= BIT5((int)flags) > 0 ? 1 : 0;
+			sHeader.flags.footer		= BIT4((int)flags) > 0 ? 1 : 0;
+			sHeader.flags.compression	= -1;
+			break;
+	}
+	
+	if(sHeader.flags.footer == 1) {
 		footer = 10;
 	}
+	sHeader.size 	= _php_bigEndian_to_Int(size, 4, 1 TSRMLS_CC);
+	sHeader.effSize	= 10 + _php_bigEndian_to_Int(size, 4, 1 TSRMLS_CC) + footer;
+	
+	return sHeader;
+}
+/* }}} */
 
-	php_stream_seek(stream, ID3V2_IDENTIFIER_LENGTH + 3, SEEK_SET);
-	return stdHdr + _php_bigEndian_to_Int(size, 4, sFlags.unsynch TSRMLS_CC) + footer;
+/* {{{ proto struct id3v2ExtHeader _php_id3v2_get_extHeader(php_stream *stream TSRMLS_DC)
+   Returns a structure that contains a structure that describes the extended tag-header */
+struct id3v2ExtHeader _php_id3v2_get_extHeader(php_stream *stream TSRMLS_DC)
+{
+/*
+   The extended header contains information that can provide further
+   insight in the structure of the tag, but is not vital to the correct
+   parsing of the tag information; hence the extended header is
+   optional.
+
+     Extended header size   4 * %0xxxxxxx
+     Number of flag bytes       $01
+     Extended Flags             $xx
+
+   The extended flags field, with its size described by 'number of flag
+   bytes', is defined as:
+
+   %0bcd0000
+
+	b - Tag is an update
+	  	Flag data length      $00
+		
+	c - CRC data present
+		Flag data length       $05
+		Total frame CRC    5 * %0xxxxxxx
+		
+	d - Tag restrictions
+	
+		For some applications it might be desired to restrict a tag in more
+		ways than imposed by the ID3v2 specification. Note that the
+		presence of these restrictions does not affect how the tag is
+		decoded, merely how it was restricted before encoding. If this flag
+		is set the tag is restricted as follows:
+	
+		Flag data length       $01
+		Restrictions           %ppqrrstt
+	
+		p - Tag size restrictions
+	
+		00   No more than 128 frames and 1 MB total tag size.
+		01   No more than 64 frames and 128 KB total tag size.
+		10   No more than 32 frames and 40 KB total tag size.
+		11   No more than 32 frames and 4 KB total tag size.
+	
+		q - Text encoding restrictions
+	
+		0    No restrictions
+		1    Strings are only encoded with ISO-8859-1 [ISO-8859-1] or
+			UTF-8 [UTF-8].
+	
+		r - Text fields size restrictions
+	
+		00   No restrictions
+		01   No string is longer than 1024 characters.
+		10   No string is longer than 128 characters.
+		11   No string is longer than 30 characters.
+	
+		Note that nothing is said about how many bytes is used to
+		represent those characters, since it is encoding dependent. If a
+		text frame consists of more than one string, the sum of the
+		strungs is restricted as stated.
+	
+		s - Image encoding restrictions
+	
+		0   No restrictions
+		1   Images are encoded only with PNG [PNG] or JPEG [JFIF].
+	
+		t - Image size restrictions
+	
+		00  No restrictions
+		01  All images are 256x256 pixels or smaller.
+		10  All images are 64x64 pixels or smaller.
+		11  All images are exactly 64x64 pixels, unless required
+			otherwise.
+*/
+
+	struct id3v2ExtHeader sExtHdr;
+	
+	char	size[5],
+			numFlagBytes,
+			extFlags,
+			crcData[6],
+			tagRestrictions;
+			
+	int 	iTRByte;
+		
+	php_stream_seek(stream, ID3V2_BASEHEADER_LENGTH, SEEK_SET);
+	
+	php_stream_read(stream, size, 4);
+	php_stream_read(stream, &numFlagBytes, 1);
+	php_stream_read(stream, &extFlags, 1);
+	
+	sExtHdr.size 				= _php_bigEndian_to_Int(size, 4, 1 TSRMLS_CC);
+	sExtHdr.numFlagBytes		= (int)numFlagBytes;
+	
+	sExtHdr.flags.update		= BIT6((int)extFlags) > 0 ? 1 : 0;
+	sExtHdr.flags.crcPresent	= BIT5((int)extFlags) > 0 ? 1 : 0;
+	sExtHdr.flags.restrictions	= BIT4((int)extFlags) > 0 ? 1 : 0;
+	
+	if (sExtHdr.flags.crcPresent == 1) {
+		php_stream_read(stream, crcData, 5);
+		sExtHdr.flags.crcData = _php_bigEndian_to_Int(crcData, 5, 1 TSRMLS_CC);
+	}
+	
+	if (sExtHdr.flags.restrictions == 1) {
+		php_stream_read(stream, &tagRestrictions, 1);
+		
+		iTRByte = (int)tagRestrictions;
+		sExtHdr.flags.restrictionData.tagSize		= (iTRByte & 0x00C0) >> 6;
+		sExtHdr.flags.restrictionData.textEncoding	= (iTRByte & 0x0020) >> 5;
+		sExtHdr.flags.restrictionData.textFieldSize	= (iTRByte & 0x0018) >> 3;
+		sExtHdr.flags.restrictionData.imageEncoding	= (iTRByte & 0x0004) >> 2;
+		sExtHdr.flags.restrictionData.imageSize		= (iTRByte & 0x0003);
+	}
+	
+	//php_stream_read(stream, &version, 1);
+	return sExtHdr;
 }
 /* }}} */
 
@@ -839,17 +977,18 @@ int _php_id3v2_get_framesOffset(php_stream *stream TSRMLS_DC)
 {
 	int offset = 0;
 
-	struct id3v2HdrFlags sFlags = _php_id3v2_get_hdrFlags(stream TSRMLS_CC);
-	struct id3v2ExtHdrFlags sExtHdrFlags;
+	struct id3v2Header sHeader = _php_id3v2_get_header(stream TSRMLS_CC);
+	struct id3v2ExtHeader sExtHdr;
 	
 	/* if no extended header is present the frames will start directly after the header */
-	if (!sFlags.extHdr) {
+	if (sHeader.flags.extHdr != 1) {
 		return offset = 10;
 	}
 	
 	/* when this is executed an extended header is present */
 	offset += 10;
-	sExtHdrFlags = _php_id3v2_get_extHdrFlags(stream TSRMLS_CC);
+	sExtHdr = _php_id3v2_get_extHeader(stream TSRMLS_CC);
+	return offset += sExtHdr.size;
 }
 /* }}} */
 
