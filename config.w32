@@ -1,0 +1,8 @@
+// $Id$
+// vim:ft=javascript
+
+ARG_ENABLE("id3", "id3 support", "yes");
+
+if (PHP_ID3 == "yes") {
+	EXTENSION("id3", "id3.c");
+}

@@ -1,0 +1,5 @@
+id3 TODO:
+---------
+check, whether supplied streams are able to seek and write
+implement id3v2
+check for 64bit problems (foo_len must be int)
