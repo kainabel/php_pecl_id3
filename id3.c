@@ -274,7 +274,7 @@ PHP_FUNCTION(id3_get_tag)
 }
 /* }}} */
 
-/* {{{ proto array id3_set_tag(string file, array tag)
+/* {{{ proto boolean id3_set_tag(string file, array tag)
    Set an array containg all information from the id3 tag */
 PHP_FUNCTION(id3_set_tag)
 {
@@ -573,7 +573,7 @@ PHP_FUNCTION(id3_remove_tag)
 /* }}} */
 
 
-/* {{{ proto array id3_get_version(string file)
+/* {{{ proto int id3_get_version(string file)
    Returns version of the id3 tag */
 PHP_FUNCTION(id3_get_version)
 {
