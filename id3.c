@@ -358,7 +358,7 @@ void _php_id3v2_get_tag(php_stream *stream , zval* return_value, int version TSR
 {
 	zend_printf("Sorry, not implemented yet");
 	
-	struct id3v2HdrFlags sBaseFlags = _php_id3v2_get_hdrFlags(stream TSRMLS_CC);
+//	struct id3v2ExtHdrFlags sBaseFlags = _php_id3v2_get_hdrFlags(stream TSRMLS_CC);
 	
 }
 /* }}} */
@@ -829,7 +829,7 @@ int _php_id3v2_get_tagLength(php_stream *stream TSRMLS_DC)
 	}
 
 	php_stream_seek(stream, ID3V2_IDENTIFIER_LENGTH + 3, SEEK_SET);
-	return stdHdr + _php_bigEndian_to_Int(size, 4, sFlags.unsynch) + footer;
+	return stdHdr + _php_bigEndian_to_Int(size, 4, sFlags.unsynch TSRMLS_CC) + footer;
 }
 /* }}} */
 
