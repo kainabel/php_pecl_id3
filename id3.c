@@ -366,17 +366,27 @@ void _php_id3v1_get_tag(php_stream *stream , zval* return_value, int version TSR
    Set an array containg all information from the id3v1 tag */
 void _php_id3v2_get_tag(php_stream *stream , zval* return_value, int version TSRMLS_DC)
 {
-	int frameOffset = -1;
+	int	frameOffset,
+		frameDataLength;
 	
 	struct id3v2Header sHeader;
+	struct id3v2ExtHeader sExtHeader;
 	
 	sHeader 		= _php_id3v2_get_header(stream TSRMLS_CC);
 	frameOffset		= _php_id3v2_get_framesOffset(stream TSRMLS_CC);
 	
+	frameDataLength	= sHeader.size;
+	if (sHeader.flags.extHdr == 1) {
+		sExtHeader = _php_id3v2_get_extHeader(stream TSRMLS_CC);
+		frameDataLength -= sExtHeader.size;
+	}
+	
+	/*
 	zend_printf("Sorry, not implemented yet");
 	zend_printf("\n----------\nIdentifier: %s\n", sHeader.id);
 	zend_printf("Version: ID3v2.%d.%d\n", sHeader.version, sHeader.revision);
 	zend_printf("Header-Size: %d\n", sHeader.size);
+	zend_printf("eff. Header-Size: %d\n", sHeader.effSize);
 	zend_printf("Flags:\n");
 	zend_printf("  unsynch: %d\n", sHeader.flags.unsynch);
 	zend_printf("  extHdr: %d\n", sHeader.flags.extHdr);
@@ -385,6 +395,8 @@ void _php_id3v2_get_tag(php_stream *stream , zval* return_value, int version TSR
 	zend_printf("  compression: %d\n----------\n", sHeader.flags.compression);
 	
 	zend_printf("Framedata-Offset: %d \n", frameOffset);
+	zend_printf("Framedata-Length: %d \n", frameDataLength);
+	*/
 }
 /* }}} */
 
