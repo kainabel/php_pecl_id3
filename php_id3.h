@@ -47,8 +47,6 @@ PHP_FUNCTION(id3_get_genre_list);
 PHP_FUNCTION(id3_get_genre_name);
 PHP_FUNCTION(id3_get_genre_id);
 
-
-
 /* 
   	Declare any global variables you may need between the BEGIN
 	and END macros here:	 

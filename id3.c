@@ -41,8 +41,9 @@
 
 /* function prototypes */
 struct id3v2HdrFlags _php_id3v2_get_hdrFlags(php_stream *stream TSRMLS_DC);
+struct id3v2ExtHdrFlags _php_id3v2_get_extHdrFlags(php_stream *stream TSRMLS_DC);
 int _php_id3v2_get_tagLength(php_stream *stream TSRMLS_DC);
-int _php_bigEndian_to_Int(char* byteword, int bytewordlen, int synchsafe);
+int _php_bigEndian_to_Int(char* byteword, int bytewordlen, int synchsafe TSRMLS_DC);
 void _php_id3v1_get_tag(php_stream *stream , zval* return_value, int version TSRMLS_DC);
 void _php_id3v2_get_tag(php_stream *stream , zval* return_value, int version TSRMLS_DC);
 static int _php_id3_get_version(php_stream *stream TSRMLS_DC);
@@ -71,6 +72,32 @@ struct id3v2HdrFlags {
 	int experimental;
 	int footer;
 	int compression;
+};
+
+/* id3v2x extended-header flags 
+ * 
+ * 1 = flag is set
+ * 0 = flag isn't set
+ * -1 = id3-version doesn't know about this flag
+ */
+struct id3v2ExtHdrFlags {
+	int	unsynch;
+	int	extHdr;
+	int experimental;
+	int footer;
+	int compression;
+};
+
+/* id3v2.x extended-header
+*
+ * Extended header size   4 * %0xxxxxxx
+ * Number of flag bytes       $01
+ * Extended Flags             $xx
+ */
+struct id3v2Header {
+	int	size;
+	int	numFlagBytes;
+	struct id3v2ExtHdrFlags flags;
 };
 
 /* predefined genres */
@@ -184,7 +211,7 @@ PHP_FUNCTION(id3_get_tag)
 {
 	zval *arg;
 	php_stream *stream;
-	int version = ID3_V2_4;
+	int version = ID3_V1_1;
 	int opened = 0;
 	char tag[4];
 	
@@ -221,22 +248,23 @@ PHP_FUNCTION(id3_get_tag)
 	if(!stream) {
 		RETURN_FALSE;
 	}
-
-	php_stream_seek(stream, ID3_SEEK_V1_TAG, SEEK_END);
-	php_stream_read(stream, tag, 3);
-
-	if (strncmp(tag, "TAG", 3) != 0) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "id3_get_tag() no ID3v1 tag found");
-		if (opened == 1) {
-			php_stream_close(stream);
-		}
-		return;
-	}
 	
 	/* initialize associative return array */
 	array_init(return_value);
 	/* call function to fill return-array depending on version */
 	if (version == ID3_V1_0 || version == ID3_V1_1) {
+		/* check whether id3v1-tag exists */
+		php_stream_seek(stream, ID3_SEEK_V1_TAG, SEEK_END);
+		php_stream_read(stream, tag, 3);
+	
+		if (strncmp(tag, "TAG", 3) != 0) {
+			php_error_docref(NULL TSRMLS_CC, E_WARNING, "id3_get_tag() no ID3v1 tag found");
+			if (opened == 1) {
+				php_stream_close(stream);
+			}
+			return;
+		}
+		
 		_php_id3v1_get_tag(stream, return_value, version TSRMLS_CC);
 	} else {
 		_php_id3v2_get_tag(stream, return_value, version TSRMLS_CC);
@@ -329,6 +357,9 @@ void _php_id3v1_get_tag(php_stream *stream , zval* return_value, int version TSR
 void _php_id3v2_get_tag(php_stream *stream , zval* return_value, int version TSRMLS_DC)
 {
 	zend_printf("Sorry, not implemented yet");
+	
+	struct id3v2HdrFlags sBaseFlags = _php_id3v2_get_hdrFlags(stream TSRMLS_CC);
+	
 }
 /* }}} */
 
@@ -745,6 +776,19 @@ struct id3v2HdrFlags _php_id3v2_get_hdrFlags(php_stream *stream TSRMLS_DC)
 	
 	return sFlags;
 }
+/* }}} */
+
+/* {{{ proto struct id3v2HdrFlags _php_id3v2_get_hdrFlags(php_stream *stream TSRMLS_DC)
+   Returns a structure that contains all flags of the tag-header */
+struct id3v2ExtHdrFlags _php_id3v2_get_extHdrFlags(php_stream *stream TSRMLS_DC)
+{
+	struct id3v2ExtHdrFlags sFlags;
+	
+	php_stream_seek(stream, ID3V2_BASEHEADER_LENGTH, SEEK_SET);
+	//php_stream_read(stream, &version, 1);
+	return sFlags;
+}
+/* }}} */
 
 /* {{{ proto int _php_id3v2_get_tagLength(php_stream *stream TSRMLS_DC)
    Returns the length in bytes of the id3v2-tag */
@@ -768,6 +812,11 @@ int _php_id3v2_get_tagLength(php_stream *stream TSRMLS_DC)
      +-----------------------------+
 
    In general, padding and footer are mutually exclusive.
+   
+   The ID3v2 tag size is the sum of the byte length of the extended
+   header, the padding and the frames after unsynchronisation. If a
+   footer is present this equals to ('total size' - 20) bytes, otherwise
+   ('total size' - 10) bytes.
 */
 	char size[5];
 	int	stdHdr	= 10,
@@ -784,21 +833,23 @@ int _php_id3v2_get_tagLength(php_stream *stream TSRMLS_DC)
 }
 /* }}} */
 
-/* {{{ proto int _php_bigEndian_to_Int(char* byteword, int bytewordlen, int synchsafe)
-   Converts a big-endian byte-stream into an integer */
-int _php_bigEndian_to_Int(char* byteword, int bytewordlen, int synchsafe) 
+/* {{{ proto int _php_id3v2_get_tagLength(php_stream *stream TSRMLS_DC)
+   Returns the length in bytes of the id3v2-tag */
+int _php_id3v2_get_framesOffset(php_stream *stream TSRMLS_DC)
 {
-	int	intvalue	= 0,
-		i;
+	int offset = 0;
+
+	struct id3v2HdrFlags sFlags = _php_id3v2_get_hdrFlags(stream TSRMLS_CC);
+	struct id3v2ExtHdrFlags sExtHdrFlags;
 	
-	for (i = 0; i < bytewordlen; i++) {
-		if (synchsafe) { /* disregard MSB, effectively 7-bit bytes */
-			intvalue = intvalue | (byteword[i] & 0x7F) << ((bytewordlen - 1 - i) * 7);
-		} else {
-			intvalue += byteword[i] * pow(256, (bytewordlen - 1 - i));
-		}
+	/* if no extended header is present the frames will start directly after the header */
+	if (!sFlags.extHdr) {
+		return offset = 10;
 	}
-	return intvalue + 10;
+	
+	/* when this is executed an extended header is present */
+	offset += 10;
+	sExtHdrFlags = _php_id3v2_get_extHdrFlags(stream TSRMLS_CC);
 }
 /* }}} */
 
@@ -853,6 +904,25 @@ int _php_id3_get_version(php_stream *stream TSRMLS_DC)
 	}
 	return version;
 }
+/* }}} */
+
+/* {{{ proto int _php_bigEndian_to_Int(char* byteword, int bytewordlen, int synchsafe)
+   Converts a big-endian byte-stream into an integer */
+int _php_bigEndian_to_Int(char* byteword, int bytewordlen, int synchsafe TSRMLS_DC) 
+{
+	int	intvalue	= 0,
+		i;
+	
+	for (i = 0; i < bytewordlen; i++) {
+		if (synchsafe) { /* disregard MSB, effectively 7-bit bytes */
+			intvalue = intvalue | (byteword[i] & 0x7F) << ((bytewordlen - 1 - i) * 7);
+		} else {
+			intvalue += byteword[i] * pow(256, (bytewordlen - 1 - i));
+		}
+	}
+	return intvalue + 10;
+}
+/* }}} */
 
 /*
  * Local variables:
