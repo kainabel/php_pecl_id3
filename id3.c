@@ -172,8 +172,8 @@ PHP_FUNCTION(id3_get_tag)
 }
 /* }}} */
 
-/* {{{ proto boolean id3_set_tag(string file, array tag [, int version])
-   Set an array containg all information from the id3 tag */
+/* {{{ proto zval* _php_id3v1_get_tag(php_stream *stream , zval* return_value TSRMLS_DC)
+   Set an array containg all information from the id3v1 tag */
 zval* _php_id3v1_get_tag(php_stream *stream , zval* return_value TSRMLS_DC)
 {
 	unsigned char genre;
