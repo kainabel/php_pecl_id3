@@ -53,6 +53,8 @@ int _php_id3v2_get_framesLength(php_stream* stream TSRMLS_DC);
 short _php_id3v2_get_frameHeaderLength(short majorVersion TSRMLS_DC);
 int _php_deUnSynchronize(unsigned char* buf, int bufLen TSRMLS_DC);
 int _php_strnoffcpy(unsigned char *dest, unsigned char *src, int offset, int len TSRMLS_DC);
+short _php_id3v2_parseFrame(zval *return_value, struct id3v2Header *sHeader, struct id3v2FrameHeader *sFrameHeader, unsigned char *frameContent TSRMLS_DC);
+short _php_id3v2_parseTextFrame(zval *return_value, struct id3v2FrameHeader *sFrameHeader, unsigned char *frameContent TSRMLS_DC);
 
 /* constants */
 const int ID3V2_BASEHEADER_LENGTH = 10;
@@ -398,13 +400,12 @@ void _php_id3v2_get_tag(php_stream *stream , zval* return_value, int version TSR
 		currentReadPos = 0,
 		paddingStart,
 		paddingLength;
-		
-	int i;
 	
-	short	paddingValid = 0,
+	short	paddingValid = 1,
 			singleFrameLength;
 		
-	unsigned char *frameData, *frameContent;
+	unsigned char	*frameData, 
+					*frameContent;
 	
 	struct id3v2Header sHeader;
 	struct id3v2ExtHeader sExtHeader;
@@ -437,57 +438,146 @@ void _php_id3v2_get_tag(php_stream *stream , zval* return_value, int version TSR
 	while (currentReadPos < frameDataLength) {
 		frameDataLeft	= frameDataLength - currentReadPos;
 	
-		
-		if (frameDataLeft <= singleFrameLength + 1) {
-		/* insufficient room left for data in the frame-header -> must be padding */
-			paddingStart	= frameDataOffset;
-			paddingLength	= frameDataLeft;
-			paddingValid	= 1;
-		
-			for (i = 0; i < paddingLength; i++) {
-				if (frameData[i] != 0x00) {
-					paddingValid	= 0;
-					/* TODO: just temporarily commented */
-					//php_error_docref(NULL TSRMLS_CC, E_WARNING, "ID3v2 tag contains invalid padding - tag considered invalid");
-					break;
-				}
+		/* check if frame or padding */
+		if (frameData[currentReadPos] != 0x00) {
+		/* must be frame-data */
+			sFrameHeader		= _php_id3v2_get_frameHeader(frameData, currentReadPos, sHeader.version TSRMLS_CC);
+			
+			/* set read-position forward after header was analyzed */
+			currentReadPos	+= singleFrameLength;
+			
+			/* allocate memory for actual frame-content */
+			frameContent					= emalloc(sFrameHeader.size + 1);
+			frameContent[sFrameHeader.size]	= 0; /* to make sure the buffer is zero-terminated */
+			_php_strnoffcpy(frameContent, frameData, currentReadPos, sFrameHeader.size TSRMLS_CC);
+			
+			/* delegate parsing the frame-content to specialized methods */
+			if (_php_id3v2_parseFrame(return_value, &sHeader, &sFrameHeader, frameContent TSRMLS_CC) != 0) {
+				/* TODO: should this throw a php-notice??? */
+				zend_printf("Parsing frame %s failed ...\n", sFrameHeader.id);
 			}
 			
-			/* skip rest of frame-data */
-			break;
+			/* set read-position forward after header was analyzed */
+			currentReadPos	+= sFrameHeader.size;
+			efree(frameContent);
+		} else {
+		/* padding found */
+			paddingStart	= currentReadPos;
+			paddingLength	= frameDataLeft;
+			
+			/* check whether padding is valid */
+			while (frameDataLeft) {
+				if (frameData[currentReadPos++] != 0x00) {
+					paddingValid = 0;
+				}
+				--frameDataLeft;
+			}
+			
+			if (! paddingValid) {
+				php_error_docref(NULL TSRMLS_CC, E_WARNING, "ID3v2 tag contains invalid padding - tag considered invalid");
+				break;
+			}
 		}
-		
-		/* read frame-header */
-		sFrameHeader		= _php_id3v2_get_frameHeader(frameData, currentReadPos, sHeader.version TSRMLS_CC);
-		
-		/* TODO: Handle unsupported-flags case */
-		
-		/*
-		zend_printf("sFrameHeader.id: %s \n", sFrameHeader.id);
-		zend_printf("sFrameHeader.size: %d \n", sFrameHeader.size);
-		zend_printf("--------------------------\n");
-		*/
-		
-		/* set read-position forward after header was analyzed */
-		currentReadPos	+= singleFrameLength;
-		
-		/* allocate memory for actual frame-content */
-		frameContent					= emalloc(sFrameHeader.size + 1);
-		frameContent[sFrameHeader.size]	= 0; /* to make sure the buffer is zero-terminated */
-		_php_strnoffcpy(frameContent, frameData, currentReadPos, sFrameHeader.size TSRMLS_CC);
-		/*
-		zend_printf("Content:\n");
-		zend_printf("Byte1: %d\n", (int)frameContent[0]);
-		zend_printf("Byte2: %d\n", (int)frameContent[1]);
-		*/
-		
-		/* set read-position forward after header was analyzed */
-		currentReadPos	+= sFrameHeader.size;
-		efree(frameContent);
-		//break; /* ONE RUN JUST FOR TESTING */
 	}
 	
 	efree(frameData);
+}
+/* }}} */
+
+/* {{{ 
+   Delegates parsing a frame to sepcialized functions after doing 
+   some general jobs like de-unsynchronization
+    
+	returns 0 if frame was successfully parsed, otherwise 1 */
+short _php_id3v2_parseFrame(zval *return_value, struct id3v2Header *sHeader, struct id3v2FrameHeader *sFrameHeader, unsigned char *frameContent TSRMLS_DC)
+{
+	int deUnsynched;
+	
+	/* groupingIdentity is not yet supported by this extension */
+	if (sFrameHeader->flags.groupingIdentity == 1) {
+		return 1;	
+	}
+	
+	/* compression is not yet supported by this extension */
+	if (sFrameHeader->flags.compression == 1) {
+		return 1;	
+	}
+	
+	/* encryption is not yet supported by this extension */
+	if (sFrameHeader->flags.encryption == 1) {
+		return 1;	
+	}
+	
+	/* dataLengthIndicator-flag is not yet supported by this extension */
+	if (sFrameHeader->flags.dataLengthIndicator == 1) {
+		return 1;	
+	}
+	
+	/* if frame-content is unsynchronized it has to be de-unsynchronized now */
+	if (sFrameHeader->flags.unsynch == 1) {
+		/* if tag is <= v2.3 then it has been de-unsynchronized by _php_id3v2_get_tag() already 
+			v2.4+ instead supports unsynchronization on frame-level
+		*/
+		if (sHeader->version > 3) {
+			deUnsynched = _php_deUnSynchronize(frameContent, sFrameHeader->size TSRMLS_CC);
+			if (deUnsynched != sFrameHeader->size) {
+				return 1;
+			}
+		}
+	}
+	
+	/* handle text-frames (T000 - TZZZ) */
+	if (sFrameHeader->id[0] == 0x54) {
+		_php_id3v2_parseTextFrame(return_value, sFrameHeader, frameContent TSRMLS_CC);
+	}
+
+	return 0;
+}
+/* }}} */
+
+/* {{{ 
+   Parses text-frames (T000 - TZZZ)
+    
+	returns 0 if frame-content was successfully added to the return_value, otherwise 1 */
+short _php_id3v2_parseTextFrame(zval *return_value, struct id3v2FrameHeader *sFrameHeader, unsigned char *frameContent TSRMLS_DC)
+{
+	/*
+		The text information frames are often the most important frames,
+		containing information like artist, album and more. There may only be
+		one text information frame of its kind in an tag. All text
+		information frames supports multiple strings, stored as a null
+		separated list, where null is reperesented by the termination code
+		for the charater encoding. All text frame identifiers begin with "T".
+		Only text frame identifiers begin with "T", with the exception of the
+		"TXXX" frame. All the text information frames have the following
+		format:
+		
+			<Header for 'Text information frame', ID: "T000" - "TZZZ",
+			excluding "TXXX" described in 4.2.6.>
+			Text encoding                $xx
+			Information                  <text string(s) according to encoding>
+	*/
+
+	char	*information;
+	int		infoSize;
+	short	encoding;
+	
+	/* TODO: handle encoding */
+	
+	encoding	= frameContent[0];
+	infoSize	= sFrameHeader->size - 1;
+	information	= emalloc(infoSize);
+	_php_strnoffcpy(information, frameContent, 1, infoSize TSRMLS_CC);
+	
+	
+	if (strcmp(sFrameHeader->id, "TIT2") == 0) {
+		add_assoc_stringl(return_value, "title", information, infoSize, 1);
+		efree(information);
+		return 0;
+	}
+	
+	efree(information);
+	return 1;
 }
 /* }}} */
 
@@ -1095,7 +1185,7 @@ struct id3v2FrameHeader _php_id3v2_get_frameHeader(unsigned char *data, int offs
 	struct id3v2FrameHeader sFrameHeader;
 	struct id3v2FrameHeaderFlags sFlags;
 	
-	int	i, frameDataLength;
+	int frameDataLength;
 	
 	unsigned char 	*frameData,
 					*size;
@@ -1112,14 +1202,11 @@ struct id3v2FrameHeader _php_id3v2_get_frameHeader(unsigned char *data, int offs
 	sFlags.dataLengthIndicator		= -1;
 	sFlags.dataLength				= -1;
 
-	frameDataLength = _php_id3v2_get_frameHeaderLength(version TSRMLS_CC);
-	
-	frameData	= emalloc(frameDataLength);
+	frameDataLength	= _php_id3v2_get_frameHeaderLength(version TSRMLS_CC);
+	frameData		= emalloc(frameDataLength);
 	
 	/* copy relevant frame data */
-	for (i = 0; i < frameDataLength; i++) {
-		frameData[i]	= data[offset + i];
-	}
+	_php_strnoffcpy(frameData, data, offset, frameDataLength TSRMLS_CC);
 	
 	if (version == 2) {
 		/*
