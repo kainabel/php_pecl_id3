@@ -474,7 +474,7 @@ void _php_id3v2_get_tag(php_stream *stream , zval* return_value, int version TSR
 		/* allocate memory for actual frame-content */
 		frameContent					= emalloc(sFrameHeader.size + 1);
 		frameContent[sFrameHeader.size]	= 0; /* to make sure the buffer is zero-terminated */
-		_php_strnoffcpy(frameContent, frameData, currentReadPos, sFrameHeader.size);
+		_php_strnoffcpy(frameContent, frameData, currentReadPos, sFrameHeader.size TSRMLS_CC);
 		/*
 		zend_printf("Content:\n");
 		zend_printf("Byte1: %d\n", (int)frameContent[0]);
@@ -1095,6 +1095,11 @@ struct id3v2FrameHeader _php_id3v2_get_frameHeader(unsigned char *data, int offs
 	struct id3v2FrameHeader sFrameHeader;
 	struct id3v2FrameHeaderFlags sFlags;
 	
+	int	i, frameDataLength;
+	
+	unsigned char 	*frameData,
+					*size;
+	
 	sFlags.tagAlterPreservation		= -1;
 	sFlags.fileAlterPreservation	= -1;
 	sFlags.readOnly					= -1;
@@ -1106,12 +1111,8 @@ struct id3v2FrameHeader _php_id3v2_get_frameHeader(unsigned char *data, int offs
 	sFlags.unsynch					= -1;
 	sFlags.dataLengthIndicator		= -1;
 	sFlags.dataLength				= -1;
-	
-	int	i,
-		frameDataLength	= _php_id3v2_get_frameHeaderLength(version);
-	
-	unsigned char 	*frameData,
-					*size;
+
+	frameDataLength = _php_id3v2_get_frameHeaderLength(version TSRMLS_CC);
 	
 	frameData	= emalloc(frameDataLength);
 	
