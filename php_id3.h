@@ -61,7 +61,7 @@ PHP_FUNCTION(id3_get_genre_id);
 struct id3v2HdrFlags _php_id3v2_get_hdrFlags(php_stream *stream TSRMLS_DC);
 int _php_id3v2_get_tagLength(php_stream *stream TSRMLS_DC);
 int _php_bigEndian_to_Int(char* byteword, int bytewordlen, int synchsafe);
-zval* _php_id3v1_get_tag(php_stream *stream , zval* retval TSRMLS_DC);
+void _php_id3v1_get_tag(php_stream *stream , zval* retval TSRMLS_DC);
 static int _php_id3_get_version(php_stream *stream TSRMLS_DC);
 static int _php_id3_write_padded(php_stream *stream, zval **data, int length TSRMLS_DC);
 

@@ -163,7 +163,7 @@ PHP_FUNCTION(id3_get_tag)
 	
 	array_init(return_value);
 	
-	return_value = _php_id3v1_get_tag(stream, return_value);
+	_php_id3v1_get_tag(stream, return_value);
 
 	if (opened == 1) {
 		php_stream_close(stream);
@@ -174,7 +174,7 @@ PHP_FUNCTION(id3_get_tag)
 
 /* {{{ proto zval* _php_id3v1_get_tag(php_stream *stream , zval* return_value TSRMLS_DC)
    Set an array containg all information from the id3v1 tag */
-zval* _php_id3v1_get_tag(php_stream *stream , zval* return_value TSRMLS_DC)
+void _php_id3v1_get_tag(php_stream *stream , zval* return_value TSRMLS_DC)
 {
 	unsigned char genre;
 	unsigned int bytes_read;
@@ -245,8 +245,6 @@ zval* _php_id3v1_get_tag(php_stream *stream , zval* return_value TSRMLS_DC)
 	/* genre */
 	php_stream_read(stream, &genre, 1);
 	add_assoc_long(return_value, "genre", (long)genre);
-	
-	return return_value;
 }
 /* }}} */
 
