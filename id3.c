@@ -27,6 +27,7 @@
 #include "php_ini.h"
 #include "ext/standard/info.h"
 #include "php_id3.h"
+#include "ext/standard/flock_compat.h"
 
 /**
  * version constants
@@ -63,6 +64,9 @@ char *id3_genres[148] = { "Blues", "Classic Rock", "Country", "Dance", "Disco", 
 		"Thrash Metal", "Anime", "JPop", "SynthPop" };
 
 const int ID3_GENRE_COUNT = 148;
+
+static int _php_id3_get_version(php_stream *stream TSRMLS_DC);
+static int _php_id3_write_padded(php_stream *stream, zval **data, int length TSRMLS_DC);
 
 /* If you declare any globals in php_id3.h uncomment this:
 ZEND_DECLARE_MODULE_GLOBALS(id3)
@@ -159,6 +163,7 @@ PHP_FUNCTION(id3_get_tag)
 	unsigned char genre;
 	char track;
 	unsigned int bytes_read;
+	char byte28, byte29;
 	
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "z|l", &arg, &version) == FAILURE) {
 		return;
@@ -207,7 +212,6 @@ PHP_FUNCTION(id3_get_tag)
 	/**
 	 * check for v1.1
 	 */
-	char byte28, byte29;
 	php_stream_seek(stream, -3, SEEK_END);
 	php_stream_read(stream, &byte28, 1);
 	php_stream_read(stream, &byte29, 1);
@@ -326,11 +330,11 @@ PHP_FUNCTION(id3_set_tag)
 	 * No ID3v1.x tag found => append TAG and 125 zerobytes
 	 * that will later store the supplied information
 	 */
-	old_version = _php_id3_get_version(stream);
+	old_version = _php_id3_get_version(stream TSRMLS_CC);
 	if ((old_version & ID3_V1_0) == 0) {
+		char blanks[125];
 		php_stream_seek(stream, 0, SEEK_END);
 		php_stream_write(stream, "TAG", 3);
-		char blanks[125];
         memset(blanks, 0, 125);
 		php_stream_write(stream, blanks, 125);
 	}
@@ -355,7 +359,7 @@ PHP_FUNCTION(id3_set_tag)
 				php_error_docref(NULL TSRMLS_CC, E_NOTICE, "id3_set_tag(): artist must be maximum of 30 characters, artist gets truncated");
 			}
 			php_stream_seek(stream, ID3_SEEK_V1_ARTIST, SEEK_END);
-			_php_id3_write_padded(stream, data, 30);
+			_php_id3_write_padded(stream, data, 30 TSRMLS_CC);
 		}
 
 		if( strcmp("album", key) == 0) {
@@ -364,20 +368,20 @@ PHP_FUNCTION(id3_set_tag)
 				php_error_docref(NULL TSRMLS_CC, E_NOTICE, "id3_set_tag(): album must be maximum of 30 characters, album gets truncated");
 			}
 			php_stream_seek(stream, ID3_SEEK_V1_ALBUM, SEEK_END);
-		  	_php_id3_write_padded(stream, data, 30);
+		  	_php_id3_write_padded(stream, data, 30 TSRMLS_CC);
 		}
 
 		if( strcmp("comment", key) == 0) {
-			convert_to_string(*data);
 			long maxlen = 30;
+			convert_to_string(*data);
 			if (version == ID3_V1_1) {
 				maxlen	=	28;
 			}
-			if (strlen(Z_STRVAL_PP(data)) > maxlen) {
+			if (Z_STRLEN_PP(data) > maxlen) {
 				php_error_docref(NULL TSRMLS_CC, E_NOTICE, "id3_set_tag(): comment must be maximum of 30 or 28 characters if v1.1 is used, comment gets truncated");
 			}
 			php_stream_seek(stream, ID3_SEEK_V1_COMMENT, SEEK_END);
-			_php_id3_write_padded(stream, data, maxlen);
+			_php_id3_write_padded(stream, data, maxlen TSRMLS_CC);
 
 		}
 
@@ -387,7 +391,7 @@ PHP_FUNCTION(id3_set_tag)
 				php_error_docref(NULL TSRMLS_CC, E_NOTICE, "id3_set_tag(): year must be maximum of 4 characters, year gets truncated");
 			}
 			php_stream_seek(stream, ID3_SEEK_V1_YEAR, SEEK_END);
-			_php_id3_write_padded(stream, data, 4);
+			_php_id3_write_padded(stream, data, 4 TSRMLS_CC);
 		}
 
 		if( strcmp("genre", key) == 0) {
@@ -429,7 +433,7 @@ PHP_FUNCTION(id3_set_tag)
 /* }}} */
 
 /* {{{ write a zero-padded string to the stream */
-int _php_id3_write_padded(php_stream *stream, zval **data, int length)
+int _php_id3_write_padded(php_stream *stream, zval **data, int length TSRMLS_DC)
 {
 	if (Z_STRLEN_PP(data)>length) {
 		php_stream_write(stream, Z_STRVAL_PP(data), length);
@@ -447,7 +451,7 @@ int _php_id3_write_padded(php_stream *stream, zval **data, int length)
  *	Returns genre name for an id */
 PHP_FUNCTION(id3_get_genre_name)
 {
-	unsigned int id;
+	int id;
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &id) == FAILURE) {
 		return;
 	}
@@ -500,6 +504,7 @@ PHP_FUNCTION(id3_remove_tag)
 	int opened = 0;
 	int version = ID3_V1_0;
 	int cutPos;
+	int fd;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "z|l", &arg, &version) == FAILURE) {
 		return;
@@ -529,7 +534,7 @@ PHP_FUNCTION(id3_remove_tag)
 		RETURN_FALSE;
 	}
 
-	if ((_php_id3_get_version(stream) & ID3_V1_0) == 0) {
+	if ((_php_id3_get_version(stream TSRMLS_CC) & ID3_V1_0) == 0) {
 		php_error_docref(NULL TSRMLS_CC, E_NOTICE, "id3_remove_tag() no ID3v1 tag found");
 		if (opened == 1) {
 			php_stream_close(stream);
@@ -548,7 +553,7 @@ PHP_FUNCTION(id3_remove_tag)
 	}
 
 	/* get the filedescriptor */
-	int fd;
+	/* XXX: AVOID DOING THIS!!! */
 	if (FAILURE == php_stream_cast(stream, PHP_STREAM_AS_FD, (void **) &fd, REPORT_ERRORS)) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "id3_remove_tag() was unable to remove the existing id3-tag");
 		if (opened == 1) {
@@ -606,7 +611,7 @@ PHP_FUNCTION(id3_get_version)
 		RETURN_FALSE;
 	}
 
-	version = _php_id3_get_version(stream);
+	version = _php_id3_get_version(stream TSRMLS_CC);
 	
 	if (opened == 1) {
 		php_stream_close(stream);
@@ -616,7 +621,7 @@ PHP_FUNCTION(id3_get_version)
 /* }}} */
 
 
-int _php_id3_get_version(php_stream *stream)
+int _php_id3_get_version(php_stream *stream TSRMLS_DC)
 {
 	int version = 0;
 	char buf[4];
@@ -627,9 +632,9 @@ int _php_id3_get_version(php_stream *stream)
 	php_stream_seek(stream, ID3_SEEK_V1_TAG, SEEK_END);
 	php_stream_read(stream, buf, 3);
 	if (strncmp("TAG", buf, 3) == 0) {
+		char byte28, byte29;
 		version = version | ID3_V1_0;
 
-		char byte28, byte29;
 
 		php_stream_seek(stream, -3, SEEK_END);
 		php_stream_read(stream, &byte28, 1);
