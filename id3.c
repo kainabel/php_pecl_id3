@@ -221,7 +221,7 @@ zend_module_entry id3_module_entry = {
 	NULL,
 	PHP_MINFO(id3),
 #if ZEND_MODULE_API_NO >= 20010901
-	"0.1", /* Replace with version number for your extension */
+	PHP_ID3_VERSION,
 #endif
 	STANDARD_MODULE_PROPERTIES
 };
@@ -261,6 +261,7 @@ PHP_MINFO_FUNCTION(id3)
 {
 	php_info_print_table_start();
 	php_info_print_table_header(2, "id3 support", "enabled");
+	php_info_print_table_row(2, "Extension version", PHP_ID3_VERSION);
 	php_info_print_table_row(2, "Supported versions", "v1.0, v1.1, v2.2+ (partly)");
 	php_info_print_table_end();
 }
