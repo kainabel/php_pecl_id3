@@ -1,69 +1,102 @@
-<?xml version="1.0" encoding="ISO-8859-1" ?>
-<!DOCTYPE package SYSTEM "http://pear.php.net/dtd/package-1.0">
-<package version="1.0">
-  <name>id3</name>
-  <summary>Functions to read and write ID3 tags in MP3 files.</summary>
-  <description>id3 enables to to retrieve and update information from ID3 tags in
-MP3 files. It supports version 1.0, 1.1 and 2.2+ (only reading text- and url-frames at the moment).</description>
-  <maintainers>
-    <maintainer>
-      <user>schst</user>
-      <name>Stephan Schmidt</name>
-      <email>schst@php-tools.net</email>
-      <role>lead</role>
-    </maintainer>
-    <maintainer>
-      <user>luckec</user>
-      <name>Carsten Lucke</name>
-      <email>luckec@php.net</email>
-      <role>lead</role>
-    </maintainer>
-  </maintainers>
+<?xml version="1.0" encoding="UTF-8"?>
+<package packagerversion="1.9.0" version="2.0" xmlns="http://pear.php.net/dtd/package-2.0" xmlns:tasks="http://pear.php.net/dtd/tasks-1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://pear.php.net/dtd/tasks-1.0
+http://pear.php.net/dtd/tasks-1.0.xsd
+http://pear.php.net/dtd/package-2.0
+http://pear.php.net/dtd/package-2.0.xsd">
+ <name>id3</name>
+ <channel>pecl.php.net</channel>
+ <summary>Functions to read and write ID3 tags in MP3 files.</summary>
+ <description>id3 enables to to retrieve and update information from ID3 tags in
+MP3 files. It supports version 1.0, 1.1 and 2.2+ (only reading text- and url-frames at the moment).
+ </description>
+ <lead>
+  <name>Stephan Schmidt</name>
+  <user>schst</user>
+  <email>schst@php-tools.net</email>
+  <active>yes</active>
+ </lead>
+ <lead>
+  <name>Carsten Lucke</name>
+  <user>luckec</user>
+  <email>luckec@php.net</email>
+  <active>yes</active>
+ </lead>
+ <date>2009-11-05</date>
+ <time>12:25:22</time>
+ <version>
+  <release>0.2</release>
+  <api>0.2</api>
+ </version>
+ <stability>
+  <release>alpha</release>
+  <api>alpha</api>
+ </stability>
+ <license uri="http://www.php.net/license">PHP License</license>
+ <notes>
+added support to read id3v2 text- and url-frames
+ </notes>
+ <contents>
+  <dir name="/">
+   <dir name="examples">
+    <file baseinstalldir="" name="example_get.php" role="doc" />
+    <file baseinstalldir="" name="example_get_genre_name.php" role="doc" />
+    <file baseinstalldir="" name="example_set.php" role="doc" />
+    <file baseinstalldir="" name="example_version.php" role="doc" />
+   </dir> <!-- //examples -->
+   <file baseinstalldir="" name="config.m4" role="src" />
+   <file baseinstalldir="" name="config.w32" role="src" />
+   <file baseinstalldir="" name="CREDITS" role="data" />
+   <file baseinstalldir="" name="EXPERIMENTAL" role="data" />
+   <file baseinstalldir="" name="id3.c" role="src" />
+   <file baseinstalldir="" name="id3.dsp" role="data" />
+   <file baseinstalldir="" name="php_id3.h" role="src" />
+   <file baseinstalldir="" name="TODO" role="data" />
+  </dir> <!-- / -->
+ </contents>
+ <dependencies>
+  <required>
+   <php>
+    <min>4.3.0</min>
+   </php>
+   <pearinstaller>
+    <min>1.4.0b1</min>
+   </pearinstaller>
+  </required>
+ </dependencies>
+ <providesextension>id3</providesextension>
+ <extsrcrelease>
+  <configureoption default="autodetect" name="enable-id3" prompt="Enable id3 support?" />
+ </extsrcrelease>
+ <changelog>
   <release>
-    <version>0.2</version>
-    <date>2004-09-24</date>
-    <license>PHP License</license>
-    <state>alpha</state>
-    <notes>added support to read id3v2 text- and url-frames</notes>
-    <deps>
-      <dep type="php" rel="ge" version="4.3.0" optional="no"/>
-    </deps>
-    <configureoptions>
-      <configureoption name="enable-id3" default="autodetect" prompt="Enable id3 support?"/>
-    </configureoptions>
-    <filelist>
-      <dir baseinstalldir="" name="/">
-       <dir name="examples">
-        <file role="doc" name="example_get.php"/>
-        <file role="doc" name="example_get_genre_name.php"/>
-        <file role="doc" name="example_set.php"/>
-        <file role="doc" name="example_version.php"/>
-       </dir> <!-- examples -->
-       <file role="src" name="config.m4"/>
-       <file role="src" name="config.w32"/>
-       <file role="data" name="CREDITS"/>
-       <file role="data" name="EXPERIMENTAL"/>
-       <file role="src" name="id3.c"/>
-       <file role="data" name="id3.dsp"/>
-       <file role="src" name="php_id3.h"/>
-       <file role="data" name="TODO"/>
-      </dir> <!-- / -->
-    </filelist>
+   <version>
+    <release>0.1</release>
+    <api>0.1</api>
+   </version>
+   <stability>
+    <release>alpha</release>
+    <api>alpha</api>
+   </stability>
+   <date>2004-09-24</date>
+   <license uri="http://www.php.net/license">PHP License</license>
+   <notes>
+added support to read id3v2 text- and url-frames
+   </notes>
   </release>
-  <changelog>
-    <release>
-      <version>0.1</version>
-      <date>2004-09-24</date>
-      <license>PHP License</license>
-      <state>alpha</state>
-      <notes>added support to read id3v2 text- and url-frames</notes>
-    </release>
-    <release>
-      <version>0.2</version>
-      <date>2004-09-24</date>
-      <license>PHP License</license>
-      <state>alpha</state>
-      <notes>added support to read id3v2 text- and url-frames</notes>
-    </release>
-  </changelog>
+  <release>
+   <version>
+    <release>0.2</release>
+    <api>0.2</api>
+   </version>
+   <stability>
+    <release>alpha</release>
+    <api>alpha</api>
+   </stability>
+   <date>2004-09-24</date>
+   <license uri="http://www.php.net/license">PHP License</license>
+   <notes>
+added support to read id3v2 text- and url-frames
+   </notes>
+  </release>
+ </changelog>
 </package>
