@@ -193,7 +193,7 @@ ZEND_DECLARE_MODULE_GLOBALS(id3)
  *
  * Every user visible function must have an entry in id3_functions[].
  */
-function_entry id3_functions[] = {
+zend_function_entry id3_functions[] = {
 	PHP_FE(id3_get_version, NULL)
 	PHP_FE(id3_get_tag,	NULL)
 	PHP_FE(id3_set_tag, NULL)
