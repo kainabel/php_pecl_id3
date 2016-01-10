@@ -271,17 +271,15 @@ PHP_MINFO_FUNCTION(id3)
    Returns an array containg all information from the id3 tag */
 PHP_FUNCTION(id3_get_tag)
 {
-	zval *arg;
+	zval *arg = 0;
 	php_stream *stream;
 
-	int	version = ID3_BEST,
+	long version = ID3_BEST,
 		versionCheck = 0,
 		opened = 0;
-
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "z|l", &arg, &version) == FAILURE) {
 		return;
 	}
-
 	if (!(version == ID3_BEST || version == ID3_V1_0 || version == ID3_V1_1 || version == ID3_V2_2 || version == ID3_V2_3 || version == ID3_V2_4)) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "id3_get_tag(): Unsupported version given");
 		return;
@@ -969,7 +967,7 @@ PHP_FUNCTION(id3_set_tag)
 	zval *arg;
 	zval *z_array;
 	php_stream *stream;
-	int version = ID3_V1_0;
+	long version = ID3_V1_0;
 	int old_version = 0;
 	int opened = 0;
 
@@ -1130,7 +1128,7 @@ int _php_id3_write_padded(php_stream *stream, zval *data, int length TSRMLS_DC)
  *	Returns genre name for an id */
 PHP_FUNCTION(id3_get_genre_name)
 {
-	int id;
+	long id;
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &id) == FAILURE) {
 		return;
 	}
@@ -1147,7 +1145,7 @@ PHP_FUNCTION(id3_get_genre_name)
 PHP_FUNCTION(id3_get_genre_id)
 {
 	char *name;
-	int name_len;
+	size_t name_len;
 	int i;
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &name, &name_len) == FAILURE) {
 		return;
@@ -1167,7 +1165,7 @@ PHP_FUNCTION(id3_get_frame_short_name)
 {
 	char			*frameId,
 					shortName[50];
-	int				frameIdLen,
+	size_t				frameIdLen,
 					i;
 	short			found = 0;
 	id3v2FrameMap	*map;
@@ -1205,7 +1203,7 @@ PHP_FUNCTION(id3_get_frame_long_name)
 {
 	char			*frameId,
 					longName[100];
-	int				frameIdLen,
+	size_t				frameIdLen,
 					i;
 	short			found = 0;
 	id3v2FrameMap	*map;
@@ -1257,7 +1255,7 @@ PHP_FUNCTION(id3_remove_tag)
 	zval *arg;
 	php_stream *stream;
 	int opened = 0;
-	int version = ID3_V1_0;
+	long version = ID3_V1_0;
 	int cutPos;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "z|l", &arg, &version) == FAILURE) {

@@ -1,5 +1,5 @@
 --TEST--
-Test all ID3 functionality
+Test set ID3 functionality
 --INI--
 xdebug.default_enable=0
 --FILE--
