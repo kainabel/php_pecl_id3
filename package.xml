@@ -21,20 +21,18 @@ MP3 files. It supports version 1.0, 1.1 and 2.2+ (only reading text- and url-fra
   <email>luckec@php.net</email>
   <active>yes</active>
  </lead>
- <date>2009-11-05</date>
- <time>12:25:22</time>
+ <date>2016-01-17</date>
+ <time>01:00:00</time>
  <version>
-  <release>0.2</release>
-  <api>0.2</api>
+  <release>2.0.1</release>
+  <api>2.0.1</api>
  </version>
  <stability>
   <release>alpha</release>
   <api>alpha</api>
  </stability>
  <license uri="http://www.php.net/license">PHP License</license>
- <notes>
-added support to read id3v2 text- and url-frames
- </notes>
+ <notes>PHP7+ only support since now</notes>
  <contents>
   <dir name="/">
    <dir name="examples">
@@ -56,7 +54,7 @@ added support to read id3v2 text- and url-frames
  <dependencies>
   <required>
    <php>
-    <min>4.3.0</min>
+    <min>7.0.0</min>
    </php>
    <pearinstaller>
     <min>1.4.0b1</min>
@@ -68,6 +66,19 @@ added support to read id3v2 text- and url-frames
   <configureoption default="autodetect" name="enable-id3" prompt="Enable id3 support?" />
  </extsrcrelease>
  <changelog>
+  <release>
+   <version>
+    <release>2.0.1</release>
+    <api>2.0.1</api>
+   </version>
+   <stability>
+    <release>alpha</release>
+    <api>alpha</api>
+   </stability>
+   <date>2016-01-17</date>
+   <license uri="http://www.php.net/license">PHP License</license>
+   <notes>PHP7 support</notes>
+  </release>
   <release>
    <version>
     <release>0.1</release>
