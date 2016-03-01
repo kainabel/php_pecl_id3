@@ -25,16 +25,12 @@
 extern zend_module_entry id3_module_entry;
 #define phpext_id3_ptr &id3_module_entry
 
-#define PHP_ID3_VERSION "2.0.1"
+#define PHP_ID3_VERSION "2.0.2"
 
 #ifdef PHP_WIN32
 #define PHP_ID3_API __declspec(dllexport)
 #else
 #define PHP_ID3_API
-#endif
-
-#ifdef ZTS
-#include "TSRM.h"
 #endif
 
 PHP_MINIT_FUNCTION(id3);
@@ -70,12 +66,6 @@ ZEND_END_MODULE_GLOBALS(id3)
    encouraged to rename these macros something shorter, see
    examples in any other php module directory.
 */
-
-#ifdef ZTS
-#define ID3_G(v) TSRMG(id3_globals_id, zend_id3_globals *, v)
-#else
-#define ID3_G(v) (id3_globals.v)
-#endif
 
 #endif	/* PHP_ID3_H */
 
