@@ -25,7 +25,7 @@
 extern zend_module_entry id3_module_entry;
 #define phpext_id3_ptr &id3_module_entry
 
-#define PHP_ID3_VERSION "2.0.1"
+#define PHP_ID3_VERSION "2.0.2"
 
 #ifdef PHP_WIN32
 #define PHP_ID3_API __declspec(dllexport)
