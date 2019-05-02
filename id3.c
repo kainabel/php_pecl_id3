@@ -29,6 +29,13 @@
 #include "php_id3.h"
 #include "ext/standard/flock_compat.h"
 
+/* For compatibility with older PHP versions */
+#ifndef ZEND_PARSE_PARAMETERS_NONE
+#define ZEND_PARSE_PARAMETERS_NONE() \
+	ZEND_PARSE_PARAMETERS_START(0, 0) \
+	ZEND_PARSE_PARAMETERS_END()
+#endif
+
 /* macros */
 #define BIT0(a)	(a & 1)
 #define BIT1(a)	(a & 2)
@@ -311,17 +318,21 @@ PHP_MINFO_FUNCTION(id3)
 
 /* {{{ proto array id3_get_tag(mixed file [, int version])
    Returns an array containg all information from the id3 tag */
-PHP_FUNCTION(id3_get_tag)
-{
+PHP_FUNCTION(id3_get_tag) {
+
 	zval *arg = 0;
 	php_stream *stream;
 
-	long version = ID3_BEST,
+	zend_long version = ID3_BEST,
 		versionCheck = 0,
 		opened = 0;
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "z|l", &arg, &version) == FAILURE) {
-		return;
-	}
+
+	ZEND_PARSE_PARAMETERS_START(1, 2)
+		Z_PARAM_ZVAL(arg)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_LONG(version)
+	ZEND_PARSE_PARAMETERS_END();
+
 	if (!(version == ID3_BEST || version == ID3_V1_0 || version == ID3_V1_1 || version == ID3_V2_2 || version == ID3_V2_3 || version == ID3_V2_4)) {
 		php_error_docref(NULL, E_WARNING, "id3_get_tag(): Unsupported version given");
 		return;
@@ -1004,12 +1015,12 @@ int _php_strnoffcpy(unsigned char *dest, unsigned char *src, int offset, int len
 
 /* {{{ proto boolean id3_set_tag(mixed file, array tag [, int version])
    Set an array containg all information from the id3 tag */
-PHP_FUNCTION(id3_set_tag)
-{
+PHP_FUNCTION(id3_set_tag) {
+
 	zval *arg;
 	zval *z_array;
 	php_stream *stream;
-	long version = ID3_V1_0;
+	zend_long version = ID3_V1_0;
 	int old_version = 0;
 	int opened = 0;
 
@@ -1017,9 +1028,12 @@ PHP_FUNCTION(id3_set_tag)
 	zend_string *key;
 	zval *data;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "za|l", &arg, &z_array, &version) == FAILURE) {
-		return;
-	}
+	ZEND_PARSE_PARAMETERS_START(2, 3)
+		Z_PARAM_ZVAL(arg)
+		Z_PARAM_ARRAY(z_array)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_LONG(version)
+	ZEND_PARSE_PARAMETERS_END();
 
 	/**
 	 * v2.0 will be implemented at later point
@@ -1168,12 +1182,14 @@ int _php_id3_write_padded(php_stream *stream, zval *data, int length)
 
 /* {{{ proto string id3_get_genre_name(int id)
  *	Returns genre name for an id */
-PHP_FUNCTION(id3_get_genre_name)
-{
-	long id;
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &id) == FAILURE) {
-		return;
-	}
+PHP_FUNCTION(id3_get_genre_name) {
+
+	zend_long id;
+
+	ZEND_PARSE_PARAMETERS_START(1, 1)
+		Z_PARAM_LONG(id)
+	ZEND_PARSE_PARAMETERS_END();
+
 	if (id >= ID3_GENRE_COUNT  || id < 0) {
 		php_error_docref(NULL, E_WARNING, "id3_get_genre_name(): id must be between 0 and 147");
 		return;
@@ -1184,15 +1200,16 @@ PHP_FUNCTION(id3_get_genre_name)
 
 /* {{{ proto int id3_get_genre_id(string name)
  *  *	Returns genre id for a genre name */
-PHP_FUNCTION(id3_get_genre_id)
-{
+PHP_FUNCTION(id3_get_genre_id) {
+
 	char *name;
 	size_t name_len;
-	int i;
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "s", &name, &name_len) == FAILURE) {
-		return;
-	}
-	for (i = 0; i < ID3_GENRE_COUNT; i++) {
+
+	ZEND_PARSE_PARAMETERS_START(1, 1)
+		Z_PARAM_STRING(name, name_len)
+	ZEND_PARSE_PARAMETERS_END();
+
+	for (int i = 0; i < ID3_GENRE_COUNT; i++) {
 		if (strcmp(name, id3_genres[i]) == 0) {
 			RETURN_LONG(i);
 		}
@@ -1203,8 +1220,8 @@ PHP_FUNCTION(id3_get_genre_id)
 
 /* {{{ proto string id3_get_frame_short_name(string frameId)
  *  *	Returns the short name for an id3v2 frame or false if no match was found */
-PHP_FUNCTION(id3_get_frame_short_name)
-{
+PHP_FUNCTION(id3_get_frame_short_name) {
+
 	char			*frameId,
 					shortName[50];
 	size_t				frameIdLen,
@@ -1212,9 +1229,9 @@ PHP_FUNCTION(id3_get_frame_short_name)
 	short			found = 0;
 	id3v2FrameMap	*map;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "s", &frameId, &frameIdLen) == FAILURE) {
-		return;
-	}
+	ZEND_PARSE_PARAMETERS_START(1, 1)
+		Z_PARAM_STRING(frameId, frameIdLen)
+	ZEND_PARSE_PARAMETERS_END();
 
 	/* build frame-key-map that knows what an array-key shall be used for a specific frame */
 	map = emalloc(ID3V2_FRAMEMAP_ENTRIES * sizeof(id3v2FrameMap));
@@ -1241,25 +1258,24 @@ PHP_FUNCTION(id3_get_frame_short_name)
 
 /* {{{ proto string id3_get_frame_long_name(string frameId)
  *  *	Returns the long name for an id3v2 frame or false if no match was found */
-PHP_FUNCTION(id3_get_frame_long_name)
-{
+PHP_FUNCTION(id3_get_frame_long_name) {
+
 	char			*frameId,
 					longName[100];
-	size_t				frameIdLen,
-					i;
+	size_t			frameIdLen;
 	short			found = 0;
 	id3v2FrameMap	*map;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "s", &frameId, &frameIdLen) == FAILURE) {
-		return;
-	}
+	ZEND_PARSE_PARAMETERS_START(1, 1)
+		Z_PARAM_STRING(frameId, frameIdLen)
+	ZEND_PARSE_PARAMETERS_END();
 
 	/* build frame-key-map that knows what an array-key shall be used for a specific frame */
 	map = emalloc(ID3V2_FRAMEMAP_ENTRIES * sizeof(id3v2FrameMap));
 	_php_id3v2_buildFrameMap(map);
 
 	/* look if an entry in map matches */
-	for (i = 0; i < ID3V2_FRAMEMAP_ENTRIES; i++) {
+	for (int i = 0; i < ID3V2_FRAMEMAP_ENTRIES; i++) {
 		if (strcmp(frameId, map[i].id) == 0) {
 			strcpy(longName, map[i].descr);
 			found		= 1;
@@ -1279,30 +1295,32 @@ PHP_FUNCTION(id3_get_frame_long_name)
 
 /* {{{ proto array id3_get_genre_list()
  *  *	Returns an array with all possible genres */
-PHP_FUNCTION(id3_get_genre_list)
-{
-	int i;
+PHP_FUNCTION(id3_get_genre_list) {
+
+    ZEND_PARSE_PARAMETERS_NONE();
+
 	array_init(return_value);
-	for (i = 0; i < ID3_GENRE_COUNT; i++) {
+	for (int i = 0; i < ID3_GENRE_COUNT; i++) {
 		add_index_string(return_value, i, id3_genres[i]);
 	}
-	return;
 }
 /* }}} */
 
 /* {{{ proto int id3_remove_tag(mixed file [, version])
  *  *	Returns true on success, otherwise false */
-PHP_FUNCTION(id3_remove_tag)
-{
+PHP_FUNCTION(id3_remove_tag) {
+
 	zval *arg;
 	php_stream *stream;
+	zend_long version = ID3_V1_0;
 	int opened = 0;
-	long version = ID3_V1_0;
 	int cutPos;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "z|l", &arg, &version) == FAILURE) {
-		return;
-	}
+	ZEND_PARSE_PARAMETERS_START(1, 2)
+		Z_PARAM_ZVAL(arg)
+		Z_PARAM_OPTIONAL
+		Z_PARAM_LONG(version)
+	ZEND_PARSE_PARAMETERS_END();
 
 	/* v2.0 will be implemented at later point */
 	if (version != ID3_V1_0 && version != ID3_V1_1) {
@@ -1385,16 +1403,16 @@ PHP_FUNCTION(id3_remove_tag)
 
 /* {{{ proto int id3_get_version(mixed file)
    Returns version of the id3 tag */
-PHP_FUNCTION(id3_get_version)
-{
+PHP_FUNCTION(id3_get_version) {
+
 	zval *arg;
 	php_stream *stream;
+	zend_long version = 0;
 	int opened = 0;
-	int version = 0;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS(), "z", &arg) == FAILURE) {
-		return;
-	}
+	ZEND_PARSE_PARAMETERS_START(1, 1)
+		Z_PARAM_ZVAL(arg)
+	ZEND_PARSE_PARAMETERS_END();
 
 	switch(Z_TYPE_P(arg)) {
 		case IS_STRING:
