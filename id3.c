@@ -1,6 +1,6 @@
 /*
   +----------------------------------------------------------------------+
-  | PHP Version 5                                                        |
+  | PHP Version 7                                                        |
   +----------------------------------------------------------------------+
   | Copyright (c) 1997-2004 The PHP Group                                |
   +----------------------------------------------------------------------+
@@ -57,7 +57,7 @@ const int ID3_V2_4	= 60;
 /* id3v2x header flags
  *
  * The structure of those flags differs in different versions,
- * see struct id3v2HdrFlags _php_id3v2_get_hdrFlags(php_stream *stream TSRMLS_DC)
+ * see struct id3v2HdrFlags _php_id3v2_get_hdrFlags(php_stream *stream)
  * for more details
  *
  * 1 = flag is set
@@ -134,26 +134,26 @@ typedef struct {
 } id3v2FrameMap;
 
 /* function prototypes */
-id3v2Header _php_id3v2_get_header(php_stream *stream TSRMLS_DC);
-id3v2ExtHeader _php_id3v2_get_extHeader(php_stream *stream TSRMLS_DC);
-id3v2FrameHeader _php_id3v2_get_frameHeader(unsigned char *data, int offset, short version TSRMLS_DC);
-int _php_bigEndian_to_Int(char* byteword, int bytewordlen, short synchsafe TSRMLS_DC);
-void _php_id3v1_get_tag(php_stream *stream , zval* return_value, int version TSRMLS_DC);
-void _php_id3v2_get_tag(php_stream *stream , zval* return_value, int version TSRMLS_DC);
-static int _php_id3_get_version(php_stream *stream TSRMLS_DC);
-static int _php_id3_write_padded(php_stream *stream, zval *data, int length TSRMLS_DC);
-int _php_id3v2_get_framesOffset(php_stream *stream TSRMLS_DC);
-int _php_id3v2_get_framesLength(php_stream* stream TSRMLS_DC);
-short _php_id3v2_get_frameHeaderLength(short majorVersion TSRMLS_DC);
-int _php_deUnSynchronize(unsigned char* buf, int bufLen TSRMLS_DC);
-int _php_strnoffcpy(unsigned char *dest, unsigned char *src, int offset, int len TSRMLS_DC);
-short _php_id3v2_parseFrame(zval *return_value, id3v2Header *sHeader, id3v2FrameHeader *sFrameHeader, unsigned char *frameContent, id3v2FrameMap *map TSRMLS_DC);
-short _php_id3v2_parseUFIDFrame(zval *return_value, id3v2Header *sHeader, id3v2FrameHeader *sFrameHeader, unsigned char *frameContent, id3v2FrameMap *map TSRMLS_DC);
-short _php_id3v2_parseTextFrame(zval *return_value, id3v2Header *sHeader, id3v2FrameHeader *sFrameHeader, unsigned char *frameContent, id3v2FrameMap *map TSRMLS_DC);
-short _php_id3v2_parseLinkFrame(zval *return_value, id3v2Header *sHeader, id3v2FrameHeader *sFrameHeader, unsigned char *frameContent, id3v2FrameMap *map TSRMLS_DC);
-void _php_id3v2_buildFrameMap(id3v2FrameMap *map TSRMLS_DC);
-void _php_id3v2_addFrameMap(id3v2FrameMap *stack, long offset, char *frameId, char* arrayKey, char *descr TSRMLS_DC);
-char *_php_id3v2_getKeyForFrame(id3v2FrameMap *stack, char *frameId TSRMLS_DC);
+id3v2Header _php_id3v2_get_header(php_stream *stream);
+id3v2ExtHeader _php_id3v2_get_extHeader(php_stream *stream);
+id3v2FrameHeader _php_id3v2_get_frameHeader(unsigned char *data, int offset, short version);
+int _php_bigEndian_to_Int(char* byteword, int bytewordlen, short synchsafe);
+void _php_id3v1_get_tag(php_stream *stream , zval* return_value, int version);
+void _php_id3v2_get_tag(php_stream *stream , zval* return_value, int version);
+static int _php_id3_get_version(php_stream *stream);
+static int _php_id3_write_padded(php_stream *stream, zval *data, int length);
+int _php_id3v2_get_framesOffset(php_stream *stream);
+int _php_id3v2_get_framesLength(php_stream* stream);
+short _php_id3v2_get_frameHeaderLength(short majorVersion);
+int _php_deUnSynchronize(unsigned char* buf, int bufLen);
+int _php_strnoffcpy(unsigned char *dest, unsigned char *src, int offset, int len);
+short _php_id3v2_parseFrame(zval *return_value, id3v2Header *sHeader, id3v2FrameHeader *sFrameHeader, unsigned char *frameContent, id3v2FrameMap *map);
+short _php_id3v2_parseUFIDFrame(zval *return_value, id3v2Header *sHeader, id3v2FrameHeader *sFrameHeader, unsigned char *frameContent, id3v2FrameMap *map);
+short _php_id3v2_parseTextFrame(zval *return_value, id3v2Header *sHeader, id3v2FrameHeader *sFrameHeader, unsigned char *frameContent, id3v2FrameMap *map);
+short _php_id3v2_parseLinkFrame(zval *return_value, id3v2Header *sHeader, id3v2FrameHeader *sFrameHeader, unsigned char *frameContent, id3v2FrameMap *map);
+void _php_id3v2_buildFrameMap(id3v2FrameMap *map);
+void _php_id3v2_addFrameMap(id3v2FrameMap *stack, long offset, char *frameId, char* arrayKey, char *descr);
+char *_php_id3v2_getKeyForFrame(id3v2FrameMap *stack, char *frameId);
 
 /* predefined genres */
 const int ID3_GENRE_COUNT = 148;
@@ -277,11 +277,11 @@ PHP_FUNCTION(id3_get_tag)
 	long version = ID3_BEST,
 		versionCheck = 0,
 		opened = 0;
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "z|l", &arg, &version) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "z|l", &arg, &version) == FAILURE) {
 		return;
 	}
 	if (!(version == ID3_BEST || version == ID3_V1_0 || version == ID3_V1_1 || version == ID3_V2_2 || version == ID3_V2_3 || version == ID3_V2_4)) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "id3_get_tag(): Unsupported version given");
+		php_error_docref(NULL, E_WARNING, "id3_get_tag(): Unsupported version given");
 		return;
 	}
 
@@ -294,7 +294,7 @@ PHP_FUNCTION(id3_get_tag)
 			php_stream_from_zval(stream, arg);
 			break;
 		default:
-			php_error_docref(NULL TSRMLS_CC, E_WARNING, "id3_get_tag() expects parameter 1 to be string or resource");
+			php_error_docref(NULL, E_WARNING, "id3_get_tag() expects parameter 1 to be string or resource");
 			return;
 	}
 
@@ -304,10 +304,10 @@ PHP_FUNCTION(id3_get_tag)
 	}
 
 	/* check if a tag exists at all */
-	versionCheck = _php_id3_get_version(stream TSRMLS_CC);
+	versionCheck = _php_id3_get_version(stream);
 	if (versionCheck == 0 || versionCheck == ID3_V2_1) {
 		/* stream contains no tag or only an unsupported v2.1 tag */
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "id3_get_tag() no or unsupported id3 tag found");
+		php_error_docref(NULL, E_WARNING, "id3_get_tag() no or unsupported id3 tag found");
 		if (opened == 1) {
 			php_stream_close(stream);
 		}
@@ -329,7 +329,7 @@ PHP_FUNCTION(id3_get_tag)
 	} else {
 	/* a specific tag version was requested - lets check if the tag contains this version */
 		if ((version & versionCheck) != version) {
-			php_error_docref(NULL TSRMLS_CC, E_WARNING, "id3_get_tag() specified tag-version not available - try ID3_BEST");
+			php_error_docref(NULL, E_WARNING, "id3_get_tag() specified tag-version not available - try ID3_BEST");
 			if (opened == 1) {
 				php_stream_close(stream);
 			}
@@ -339,9 +339,9 @@ PHP_FUNCTION(id3_get_tag)
 
 	/* call function to fill return-array depending on version */
 	if (version == ID3_V1_0 || version == ID3_V1_1) {
-		_php_id3v1_get_tag(stream, return_value, version TSRMLS_CC);
+		_php_id3v1_get_tag(stream, return_value, version);
 	} else {
-		_php_id3v2_get_tag(stream, return_value, version TSRMLS_CC);
+		_php_id3v2_get_tag(stream, return_value, version);
 	}
 
 	if (opened == 1) {
@@ -351,9 +351,9 @@ PHP_FUNCTION(id3_get_tag)
 }
 /* }}} */
 
-/* {{{ proto zval* _php_id3v1_get_tag(php_stream *stream , zval* return_value TSRMLS_DC)
+/* {{{ proto zval* _php_id3v1_get_tag(php_stream *stream , zval* return_value)
    Set an array containg all information from the id3v1 tag */
-void _php_id3v1_get_tag(php_stream *stream , zval* return_value, int version TSRMLS_DC)
+void _php_id3v1_get_tag(php_stream *stream , zval* return_value, int version)
 {
 	unsigned char genre;
 	unsigned int bytes_read;
@@ -432,167 +432,167 @@ void _php_id3v1_get_tag(php_stream *stream , zval* return_value, int version TSR
 
    !!! Remember to update global variable ID3V2_FRAMEMAP_ENTRIES when adding
        new frame-mappings !!! */
-void _php_id3v2_buildFrameMap(id3v2FrameMap *map TSRMLS_DC)
+void _php_id3v2_buildFrameMap(id3v2FrameMap *map)
 {
 	long offset = 0;
 
-	_php_id3v2_addFrameMap(map, offset++, "CRA", "audioEncr", "Audio encryption" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "AENC", "audioEncr", "Audio encryption" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "PIC", "attPict", "Attached picture" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "APIC", "attPict", "Attached picture" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "ASPI", "audioSeekPntIdx", "Audio seek point index" TSRMLS_CC);
+	_php_id3v2_addFrameMap(map, offset++, "CRA", "audioEncr", "Audio encryption");
+	_php_id3v2_addFrameMap(map, offset++, "AENC", "audioEncr", "Audio encryption");
+	_php_id3v2_addFrameMap(map, offset++, "PIC", "attPict", "Attached picture");
+	_php_id3v2_addFrameMap(map, offset++, "APIC", "attPict", "Attached picture");
+	_php_id3v2_addFrameMap(map, offset++, "ASPI", "audioSeekPntIdx", "Audio seek point index");
 
-	_php_id3v2_addFrameMap(map, offset++, "COM", "comment", "Comments" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "COMM", "comment", "Comments" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "COMR", "commercial", "Commercial frame" TSRMLS_CC);
+	_php_id3v2_addFrameMap(map, offset++, "COM", "comment", "Comments");
+	_php_id3v2_addFrameMap(map, offset++, "COMM", "comment", "Comments");
+	_php_id3v2_addFrameMap(map, offset++, "COMR", "commercial", "Commercial frame");
 
-	_php_id3v2_addFrameMap(map, offset++, "ENCR", "encrMethodReg", "Encryption method registration" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "EQU", "equalisation", "Equalisation" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "EQUA", "equalisation", "Equalisation" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "EQU2", "equalisation2", "Equalisation (2)" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "ETC", "eventTimingCodes", "Event timing codes" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "ETCO", "eventTimingCodes", "Event timing codes" TSRMLS_CC);
+	_php_id3v2_addFrameMap(map, offset++, "ENCR", "encrMethodReg", "Encryption method registration");
+	_php_id3v2_addFrameMap(map, offset++, "EQU", "equalisation", "Equalisation");
+	_php_id3v2_addFrameMap(map, offset++, "EQUA", "equalisation", "Equalisation");
+	_php_id3v2_addFrameMap(map, offset++, "EQU2", "equalisation2", "Equalisation (2)");
+	_php_id3v2_addFrameMap(map, offset++, "ETC", "eventTimingCodes", "Event timing codes");
+	_php_id3v2_addFrameMap(map, offset++, "ETCO", "eventTimingCodes", "Event timing codes");
 
-	_php_id3v2_addFrameMap(map, offset++, "GEO", "encObj", "General encapsulated object" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "GEOB", "encObj", "General encapsulated object" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "GRID", "grpIdReg", "Group identification registration" TSRMLS_CC);
+	_php_id3v2_addFrameMap(map, offset++, "GEO", "encObj", "General encapsulated object");
+	_php_id3v2_addFrameMap(map, offset++, "GEOB", "encObj", "General encapsulated object");
+	_php_id3v2_addFrameMap(map, offset++, "GRID", "grpIdReg", "Group identification registration");
 
-	_php_id3v2_addFrameMap(map, offset++, "LNK", "lnkInf", "Linked information" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "LINK", "lnkInf", "Linked information" TSRMLS_CC);
+	_php_id3v2_addFrameMap(map, offset++, "LNK", "lnkInf", "Linked information");
+	_php_id3v2_addFrameMap(map, offset++, "LINK", "lnkInf", "Linked information");
 
-	_php_id3v2_addFrameMap(map, offset++, "MCI", "cdId", "Music CD identifier" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "MCDI", "cdId", "Music CD identifier" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "MLL", "mpgLocLookupTbl", "MPEG location lookup table" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "MLLT", "mpgLocLookupTbl", "MPEG location lookup table" TSRMLS_CC);
+	_php_id3v2_addFrameMap(map, offset++, "MCI", "cdId", "Music CD identifier");
+	_php_id3v2_addFrameMap(map, offset++, "MCDI", "cdId", "Music CD identifier");
+	_php_id3v2_addFrameMap(map, offset++, "MLL", "mpgLocLookupTbl", "MPEG location lookup table");
+	_php_id3v2_addFrameMap(map, offset++, "MLLT", "mpgLocLookupTbl", "MPEG location lookup table");
 
-	_php_id3v2_addFrameMap(map, offset++, "OWNE", "ownership", "Ownership frame" TSRMLS_CC);
+	_php_id3v2_addFrameMap(map, offset++, "OWNE", "ownership", "Ownership frame");
 
-	_php_id3v2_addFrameMap(map, offset++, "PRIV", "private", "Private frame" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "CNT", "playCnt", "Play counter" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "PCNT", "playCnt", "Play counter" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "POP", "popularimeter", "Popularimeter" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "POPM", "popularimeter", "Popularimeter" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "POSS", "posSynch", "Position synchronisation frame" TSRMLS_CC);
+	_php_id3v2_addFrameMap(map, offset++, "PRIV", "private", "Private frame");
+	_php_id3v2_addFrameMap(map, offset++, "CNT", "playCnt", "Play counter");
+	_php_id3v2_addFrameMap(map, offset++, "PCNT", "playCnt", "Play counter");
+	_php_id3v2_addFrameMap(map, offset++, "POP", "popularimeter", "Popularimeter");
+	_php_id3v2_addFrameMap(map, offset++, "POPM", "popularimeter", "Popularimeter");
+	_php_id3v2_addFrameMap(map, offset++, "POSS", "posSynch", "Position synchronisation frame");
 
-	_php_id3v2_addFrameMap(map, offset++, "BUF", "recmdBufSize", "Recommended buffer size" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "RBUF", "recmdBufSize", "Recommended buffer size" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "RVA", "relVolAdj", "Relative volume adjustment" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "RVAD", "relVolAdj", "Relative volume adjustment" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "RVA2", "relVolAdj2", "Relative volume adjustment (2)" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "REV", "reverb", "Reverb" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "RVRB", "reverb", "Reverb" TSRMLS_CC);
+	_php_id3v2_addFrameMap(map, offset++, "BUF", "recmdBufSize", "Recommended buffer size");
+	_php_id3v2_addFrameMap(map, offset++, "RBUF", "recmdBufSize", "Recommended buffer size");
+	_php_id3v2_addFrameMap(map, offset++, "RVA", "relVolAdj", "Relative volume adjustment");
+	_php_id3v2_addFrameMap(map, offset++, "RVAD", "relVolAdj", "Relative volume adjustment");
+	_php_id3v2_addFrameMap(map, offset++, "RVA2", "relVolAdj2", "Relative volume adjustment (2)");
+	_php_id3v2_addFrameMap(map, offset++, "REV", "reverb", "Reverb");
+	_php_id3v2_addFrameMap(map, offset++, "RVRB", "reverb", "Reverb");
 
-	_php_id3v2_addFrameMap(map, offset++, "SEEK", "seek", "Seek frame" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "SIGN", "signature", "Signature frame" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "SLT", "synchLyric", "Synchronised lyric/text" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "SYLT", "synchLyric", "Synchronised lyric/text" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "STC", "synchTempoCode", "Synchronised tempo codes" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "SYTC", "synchTempoCode", "Synchronised tempo codes" TSRMLS_CC);
+	_php_id3v2_addFrameMap(map, offset++, "SEEK", "seek", "Seek frame");
+	_php_id3v2_addFrameMap(map, offset++, "SIGN", "signature", "Signature frame");
+	_php_id3v2_addFrameMap(map, offset++, "SLT", "synchLyric", "Synchronised lyric/text");
+	_php_id3v2_addFrameMap(map, offset++, "SYLT", "synchLyric", "Synchronised lyric/text");
+	_php_id3v2_addFrameMap(map, offset++, "STC", "synchTempoCode", "Synchronised tempo codes");
+	_php_id3v2_addFrameMap(map, offset++, "SYTC", "synchTempoCode", "Synchronised tempo codes");
 
-	_php_id3v2_addFrameMap(map, offset++, "TAL", "album", "Album/Movie/Show title" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TALB", "album", "Album/Movie/Show title" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TBP", "bpm", "BPM (beats per minute)" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TBPM", "bpm", "BPM (beats per minute)" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TCM", "composer", "Composer" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TCOM", "composer", "Composer" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TCO", "genre", "Content type (Genre)" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TCON", "genre", "Content type (Genre)" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TCR", "copyright", "Copyright message" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TCOP", "copyright", "Copyright message" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TDEN", "encodingTime", "Encoding time" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TDLY", "playlistDelay", "Playlist delay" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TDOR", "orgReleaseTime", "Original release time" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TDRC", "recTime", "Recording time" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TDRL", "releaseTime", "Release time" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TDTG", "taggingTime", "Tagging time" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TEN", "encodedBy", "Encoded by" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TENC", "encodedBy", "Encoded by" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TXT", "lyricist", "Lyricist/Text writer" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TEXT", "lyricist", "Lyricist/Text writer" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TFLT", "filetype", "File type" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TIPL", "involvedPeopleList", "Involved people list" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TT1", "description", "Content group description" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TIT1", "description", "Content group description" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TT2", "title", "Title/songname/content description" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TIT2", "title", "Title/songname/content description" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TT3", "subtitle", "Subtitle/Description refinement" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TIT3", "subtitle", "Subtitle/Description refinement" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TKEY", "initialKey", "Initial key" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TLA", "language", "Language(s)" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TLAN", "language", "Language(s)" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TLE", "length", "Length" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TLEN", "length", "Length" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TMCL", "musicianCreditsList", "Musician credits list" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TMED", "mediaType", "Media type" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TMOO", "mood", "Mood" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TOT", "originalAlbum", "Original album/movie/show title" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TOAL", "originalAlbum", "Original album/movie/show title" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TOF", "originalFilename", "Original filename" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TOFN", "originalFilename", "Original filename" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TOL", "originalLyricist", "Original lyricist(s)/text writer(s)" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TOLY", "originalLyricist", "Original lyricist(s)/text writer(s)" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TOA", "originalArtist", "Original artist(s)/performer(s)" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TOPE", "originalArtist", "Original artist(s)/performer(s)" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TOWN", "fileOwner", "File owner/licensee" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TP1", "artist", "Lead performer(s)/Soloist(s)" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TPE1", "artist", "Lead performer(s)/Soloist(s)" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TP2", "band", "Band/orchestra/accompaniment" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TPE2", "band", "Band/orchestra/accompaniment" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TP3", "conductor", "Conductor/performer refinement" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TPE3", "conductor", "Conductor/performer refinement" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TP4", "remixer", "Interpreted, remixed, or otherwise modified by" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TPE4", "remixer", "Interpreted, remixed, or otherwise modified by" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TPOS", "partOfASet", "Part of a set" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TPRO", "producedNotice", "Produced notice" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TPB", "publisher", "Publisher" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TPUB", "publisher", "Publisher" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TRK", "track", "Track number/Position in set" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TRCK", "track", "Track number/Position in set" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TRSN", "IRSName", "Internet radio station name" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TRSO", "IRSOwner", "Internet radio station owner" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TSI", "size", "Size" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TSIZ", "size", "Size" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TSOA", "albumSortOrder", "Album sort order" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TSOP", "performerSortOrder", "Performer sort order" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TSOT", "titleSortOrder", "Title sort order" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TRC", "isrc", "ISRC (international standard recording code)" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TSRC", "isrc", "ISRC (international standard recording code)" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TSS", "encoderSettings", "Software/Hardware and settings used for encoding" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TSSE", "encoderSettings", "Software/Hardware and settings used for encoding" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TSST", "setSubtitle", "Set subtitle" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TXX", "text", "User defined text information frame" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TXXX", "text", "User defined text information frame" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TYE", "year", "Year" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "TYER", "year", "Year" TSRMLS_CC);
+	_php_id3v2_addFrameMap(map, offset++, "TAL", "album", "Album/Movie/Show title");
+	_php_id3v2_addFrameMap(map, offset++, "TALB", "album", "Album/Movie/Show title");
+	_php_id3v2_addFrameMap(map, offset++, "TBP", "bpm", "BPM (beats per minute)");
+	_php_id3v2_addFrameMap(map, offset++, "TBPM", "bpm", "BPM (beats per minute)");
+	_php_id3v2_addFrameMap(map, offset++, "TCM", "composer", "Composer");
+	_php_id3v2_addFrameMap(map, offset++, "TCOM", "composer", "Composer");
+	_php_id3v2_addFrameMap(map, offset++, "TCO", "genre", "Content type (Genre)");
+	_php_id3v2_addFrameMap(map, offset++, "TCON", "genre", "Content type (Genre)");
+	_php_id3v2_addFrameMap(map, offset++, "TCR", "copyright", "Copyright message");
+	_php_id3v2_addFrameMap(map, offset++, "TCOP", "copyright", "Copyright message");
+	_php_id3v2_addFrameMap(map, offset++, "TDEN", "encodingTime", "Encoding time");
+	_php_id3v2_addFrameMap(map, offset++, "TDLY", "playlistDelay", "Playlist delay");
+	_php_id3v2_addFrameMap(map, offset++, "TDOR", "orgReleaseTime", "Original release time");
+	_php_id3v2_addFrameMap(map, offset++, "TDRC", "recTime", "Recording time");
+	_php_id3v2_addFrameMap(map, offset++, "TDRL", "releaseTime", "Release time");
+	_php_id3v2_addFrameMap(map, offset++, "TDTG", "taggingTime", "Tagging time");
+	_php_id3v2_addFrameMap(map, offset++, "TEN", "encodedBy", "Encoded by");
+	_php_id3v2_addFrameMap(map, offset++, "TENC", "encodedBy", "Encoded by");
+	_php_id3v2_addFrameMap(map, offset++, "TXT", "lyricist", "Lyricist/Text writer");
+	_php_id3v2_addFrameMap(map, offset++, "TEXT", "lyricist", "Lyricist/Text writer");
+	_php_id3v2_addFrameMap(map, offset++, "TFLT", "filetype", "File type");
+	_php_id3v2_addFrameMap(map, offset++, "TIPL", "involvedPeopleList", "Involved people list");
+	_php_id3v2_addFrameMap(map, offset++, "TT1", "description", "Content group description");
+	_php_id3v2_addFrameMap(map, offset++, "TIT1", "description", "Content group description");
+	_php_id3v2_addFrameMap(map, offset++, "TT2", "title", "Title/songname/content description");
+	_php_id3v2_addFrameMap(map, offset++, "TIT2", "title", "Title/songname/content description");
+	_php_id3v2_addFrameMap(map, offset++, "TT3", "subtitle", "Subtitle/Description refinement");
+	_php_id3v2_addFrameMap(map, offset++, "TIT3", "subtitle", "Subtitle/Description refinement");
+	_php_id3v2_addFrameMap(map, offset++, "TKEY", "initialKey", "Initial key");
+	_php_id3v2_addFrameMap(map, offset++, "TLA", "language", "Language(s)");
+	_php_id3v2_addFrameMap(map, offset++, "TLAN", "language", "Language(s)");
+	_php_id3v2_addFrameMap(map, offset++, "TLE", "length", "Length");
+	_php_id3v2_addFrameMap(map, offset++, "TLEN", "length", "Length");
+	_php_id3v2_addFrameMap(map, offset++, "TMCL", "musicianCreditsList", "Musician credits list");
+	_php_id3v2_addFrameMap(map, offset++, "TMED", "mediaType", "Media type");
+	_php_id3v2_addFrameMap(map, offset++, "TMOO", "mood", "Mood");
+	_php_id3v2_addFrameMap(map, offset++, "TOT", "originalAlbum", "Original album/movie/show title");
+	_php_id3v2_addFrameMap(map, offset++, "TOAL", "originalAlbum", "Original album/movie/show title");
+	_php_id3v2_addFrameMap(map, offset++, "TOF", "originalFilename", "Original filename");
+	_php_id3v2_addFrameMap(map, offset++, "TOFN", "originalFilename", "Original filename");
+	_php_id3v2_addFrameMap(map, offset++, "TOL", "originalLyricist", "Original lyricist(s)/text writer(s)");
+	_php_id3v2_addFrameMap(map, offset++, "TOLY", "originalLyricist", "Original lyricist(s)/text writer(s)");
+	_php_id3v2_addFrameMap(map, offset++, "TOA", "originalArtist", "Original artist(s)/performer(s)");
+	_php_id3v2_addFrameMap(map, offset++, "TOPE", "originalArtist", "Original artist(s)/performer(s)");
+	_php_id3v2_addFrameMap(map, offset++, "TOWN", "fileOwner", "File owner/licensee");
+	_php_id3v2_addFrameMap(map, offset++, "TP1", "artist", "Lead performer(s)/Soloist(s)");
+	_php_id3v2_addFrameMap(map, offset++, "TPE1", "artist", "Lead performer(s)/Soloist(s)");
+	_php_id3v2_addFrameMap(map, offset++, "TP2", "band", "Band/orchestra/accompaniment");
+	_php_id3v2_addFrameMap(map, offset++, "TPE2", "band", "Band/orchestra/accompaniment");
+	_php_id3v2_addFrameMap(map, offset++, "TP3", "conductor", "Conductor/performer refinement");
+	_php_id3v2_addFrameMap(map, offset++, "TPE3", "conductor", "Conductor/performer refinement");
+	_php_id3v2_addFrameMap(map, offset++, "TP4", "remixer", "Interpreted, remixed, or otherwise modified by");
+	_php_id3v2_addFrameMap(map, offset++, "TPE4", "remixer", "Interpreted, remixed, or otherwise modified by");
+	_php_id3v2_addFrameMap(map, offset++, "TPOS", "partOfASet", "Part of a set");
+	_php_id3v2_addFrameMap(map, offset++, "TPRO", "producedNotice", "Produced notice");
+	_php_id3v2_addFrameMap(map, offset++, "TPB", "publisher", "Publisher");
+	_php_id3v2_addFrameMap(map, offset++, "TPUB", "publisher", "Publisher");
+	_php_id3v2_addFrameMap(map, offset++, "TRK", "track", "Track number/Position in set");
+	_php_id3v2_addFrameMap(map, offset++, "TRCK", "track", "Track number/Position in set");
+	_php_id3v2_addFrameMap(map, offset++, "TRSN", "IRSName", "Internet radio station name");
+	_php_id3v2_addFrameMap(map, offset++, "TRSO", "IRSOwner", "Internet radio station owner");
+	_php_id3v2_addFrameMap(map, offset++, "TSI", "size", "Size");
+	_php_id3v2_addFrameMap(map, offset++, "TSIZ", "size", "Size");
+	_php_id3v2_addFrameMap(map, offset++, "TSOA", "albumSortOrder", "Album sort order");
+	_php_id3v2_addFrameMap(map, offset++, "TSOP", "performerSortOrder", "Performer sort order");
+	_php_id3v2_addFrameMap(map, offset++, "TSOT", "titleSortOrder", "Title sort order");
+	_php_id3v2_addFrameMap(map, offset++, "TRC", "isrc", "ISRC (international standard recording code)");
+	_php_id3v2_addFrameMap(map, offset++, "TSRC", "isrc", "ISRC (international standard recording code)");
+	_php_id3v2_addFrameMap(map, offset++, "TSS", "encoderSettings", "Software/Hardware and settings used for encoding");
+	_php_id3v2_addFrameMap(map, offset++, "TSSE", "encoderSettings", "Software/Hardware and settings used for encoding");
+	_php_id3v2_addFrameMap(map, offset++, "TSST", "setSubtitle", "Set subtitle");
+	_php_id3v2_addFrameMap(map, offset++, "TXX", "text", "User defined text information frame");
+	_php_id3v2_addFrameMap(map, offset++, "TXXX", "text", "User defined text information frame");
+	_php_id3v2_addFrameMap(map, offset++, "TYE", "year", "Year");
+	_php_id3v2_addFrameMap(map, offset++, "TYER", "year", "Year");
 
-	_php_id3v2_addFrameMap(map, offset++, "UFI", "uniqueFileId", "Unique file identifier" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "UFID", "uniqueFileId", "Unique file identifier" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "USER", "termsOfUse", "Terms of use" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "ULT", "unsynchLyricTranscr", "Unsynchronised lyric/text transcription" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "USLT", "unsynchLyricTranscr", "Unsynchronised lyric/text transcription" TSRMLS_CC);
+	_php_id3v2_addFrameMap(map, offset++, "UFI", "uniqueFileId", "Unique file identifier");
+	_php_id3v2_addFrameMap(map, offset++, "UFID", "uniqueFileId", "Unique file identifier");
+	_php_id3v2_addFrameMap(map, offset++, "USER", "termsOfUse", "Terms of use");
+	_php_id3v2_addFrameMap(map, offset++, "ULT", "unsynchLyricTranscr", "Unsynchronised lyric/text transcription");
+	_php_id3v2_addFrameMap(map, offset++, "USLT", "unsynchLyricTranscr", "Unsynchronised lyric/text transcription");
 
-	_php_id3v2_addFrameMap(map, offset++, "WCM", "commInfo", "Commercial information" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "WCOM", "commInfo", "Commercial information" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "WCP", "copyrightInfo", "Copyright/Legal information" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "WCOP", "copyrightInfo", "Copyright/Legal information" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "WAF", "webOffAudioFile", "Official audio file webpage" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "WOAF", "webOffAudioFile", "Official audio file webpage" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "WAR", "webOffArtist", "Official artist/performer webpage" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "WOAR", "webOffArtist", "Official artist/performer webpage" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "WAS", "webOffAudioSrc", "Official audio source webpage" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "WOAS", "webOffAudioSrc", "Official audio source webpage" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "WORS", "webOffIRS", "Official Internet radio station homepage" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "WPAY", "payment", "Payment" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "WPB", "webOffPubl", "Publishers official webpage" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "WPUB", "webOffPubl", "Publishers official webpage" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "WXX", "webUserdef", "User defined URL link frame" TSRMLS_CC);
-	_php_id3v2_addFrameMap(map, offset++, "WXXX", "webUserdef", "User defined URL link frame" TSRMLS_CC);
+	_php_id3v2_addFrameMap(map, offset++, "WCM", "commInfo", "Commercial information");
+	_php_id3v2_addFrameMap(map, offset++, "WCOM", "commInfo", "Commercial information");
+	_php_id3v2_addFrameMap(map, offset++, "WCP", "copyrightInfo", "Copyright/Legal information");
+	_php_id3v2_addFrameMap(map, offset++, "WCOP", "copyrightInfo", "Copyright/Legal information");
+	_php_id3v2_addFrameMap(map, offset++, "WAF", "webOffAudioFile", "Official audio file webpage");
+	_php_id3v2_addFrameMap(map, offset++, "WOAF", "webOffAudioFile", "Official audio file webpage");
+	_php_id3v2_addFrameMap(map, offset++, "WAR", "webOffArtist", "Official artist/performer webpage");
+	_php_id3v2_addFrameMap(map, offset++, "WOAR", "webOffArtist", "Official artist/performer webpage");
+	_php_id3v2_addFrameMap(map, offset++, "WAS", "webOffAudioSrc", "Official audio source webpage");
+	_php_id3v2_addFrameMap(map, offset++, "WOAS", "webOffAudioSrc", "Official audio source webpage");
+	_php_id3v2_addFrameMap(map, offset++, "WORS", "webOffIRS", "Official Internet radio station homepage");
+	_php_id3v2_addFrameMap(map, offset++, "WPAY", "payment", "Payment");
+	_php_id3v2_addFrameMap(map, offset++, "WPB", "webOffPubl", "Publishers official webpage");
+	_php_id3v2_addFrameMap(map, offset++, "WPUB", "webOffPubl", "Publishers official webpage");
+	_php_id3v2_addFrameMap(map, offset++, "WXX", "webUserdef", "User defined URL link frame");
+	_php_id3v2_addFrameMap(map, offset++, "WXXX", "webUserdef", "User defined URL link frame");
 }
 /* }}} */
 
 /* {{{
    Adds an frame-key-map entry to the specified stack (registry) */
-void _php_id3v2_addFrameMap(id3v2FrameMap *stack, long offset, char *frameId, char* arrayKey, char *descr TSRMLS_DC)
+void _php_id3v2_addFrameMap(id3v2FrameMap *stack, long offset, char *frameId, char* arrayKey, char *descr)
 {
 	id3v2FrameMap map;
 
@@ -607,7 +607,7 @@ void _php_id3v2_addFrameMap(id3v2FrameMap *stack, long offset, char *frameId, ch
 
 /* {{{
    Returns the PHP-array-key for a id3v2-frame-id or NULL if no matching frame-id was found */
-char *_php_id3v2_getKeyForFrame(id3v2FrameMap *stack, char *frameId TSRMLS_DC)
+char *_php_id3v2_getKeyForFrame(id3v2FrameMap *stack, char *frameId)
 {
 	int i;
 
@@ -621,9 +621,9 @@ char *_php_id3v2_getKeyForFrame(id3v2FrameMap *stack, char *frameId TSRMLS_DC)
 }
 /* }}} */
 
-/* {{{ proto zval* _php_id3v1_get_tag(php_stream *stream , zval* return_value TSRMLS_DC)
+/* {{{ proto zval* _php_id3v1_get_tag(php_stream *stream , zval* return_value)
    Set an array containg all information from the id3v1 tag */
-void _php_id3v2_get_tag(php_stream *stream , zval* return_value, int version TSRMLS_DC)
+void _php_id3v2_get_tag(php_stream *stream , zval* return_value, int version)
 {
 	id3v2FrameMap *map;
 
@@ -643,14 +643,14 @@ void _php_id3v2_get_tag(php_stream *stream , zval* return_value, int version TSR
 
 	/* build frame-key-map that knows what an array-key shall be used for a specific frame */
 	map = emalloc(ID3V2_FRAMEMAP_ENTRIES * sizeof(id3v2FrameMap));
-	_php_id3v2_buildFrameMap(map TSRMLS_CC);
+	_php_id3v2_buildFrameMap(map);
 
-	sHeader 			= _php_id3v2_get_header(stream TSRMLS_CC);
-	_php_id3v2_get_extHeader(stream TSRMLS_CC);
+	sHeader 			= _php_id3v2_get_header(stream);
+	_php_id3v2_get_extHeader(stream);
 
-	frameDataOffset		= _php_id3v2_get_framesOffset(stream TSRMLS_CC);
-	frameDataLength		= _php_id3v2_get_framesLength(stream TSRMLS_CC);
-	singleFrameLength	= _php_id3v2_get_frameHeaderLength(sHeader.version TSRMLS_CC);
+	frameDataOffset		= _php_id3v2_get_framesOffset(stream);
+	frameDataLength		= _php_id3v2_get_framesLength(stream);
+	singleFrameLength	= _php_id3v2_get_frameHeaderLength(sHeader.version);
 
 	php_stream_seek(stream, frameDataOffset, SEEK_SET);
 	frameData 			= emalloc(frameDataLength);
@@ -666,7 +666,7 @@ void _php_id3v2_get_tag(php_stream *stream , zval* return_value, int version TSR
 		the frame header [S:4.1.2] indicates unsynchronisation.
 	*/
 	if (sHeader.version <= 3 && sHeader.flags.unsynch == 1) {
-		frameDataLength	= _php_deUnSynchronize(frameData, frameDataLength TSRMLS_CC);
+		frameDataLength	= _php_deUnSynchronize(frameData, frameDataLength);
 	}
 
 	while (currentReadPos < frameDataLength) {
@@ -675,7 +675,7 @@ void _php_id3v2_get_tag(php_stream *stream , zval* return_value, int version TSR
 		/* check if frame or padding */
 		if (frameData[currentReadPos] != 0x00) {
 		/* must be frame-data */
-			sFrameHeader		= _php_id3v2_get_frameHeader(frameData, currentReadPos, sHeader.version TSRMLS_CC);
+			sFrameHeader		= _php_id3v2_get_frameHeader(frameData, currentReadPos, sHeader.version);
 
 			/* set read-position forward after header was analyzed */
 			currentReadPos	+= singleFrameLength;
@@ -686,10 +686,10 @@ void _php_id3v2_get_tag(php_stream *stream , zval* return_value, int version TSR
 				frameContent					= emalloc(sFrameHeader.size + 1);
 				frameContent[sFrameHeader.size]	= 0x00; /* to make sure the buffer is zero-terminated */
 
-				_php_strnoffcpy(frameContent, frameData, currentReadPos, sFrameHeader.size TSRMLS_CC);
+				_php_strnoffcpy(frameContent, frameData, currentReadPos, sFrameHeader.size);
 
 				/* delegate parsing the frame-content to specialized methods */
-				if (! _php_id3v2_parseFrame(return_value, &sHeader, &sFrameHeader, frameContent, map TSRMLS_CC)) {
+				if (! _php_id3v2_parseFrame(return_value, &sHeader, &sFrameHeader, frameContent, map)) {
 					/* TODO: should this throw a php-notice??? */
 					//zend_printf("[DEBUG] Parsing frame %s skipped ...\n", sFrameHeader.id);
 				}
@@ -710,7 +710,7 @@ void _php_id3v2_get_tag(php_stream *stream , zval* return_value, int version TSR
 			}
 
 			if (! paddingValid) {
-				php_error_docref(NULL TSRMLS_CC, E_WARNING, "ID3v2 tag contains invalid padding - tag considered invalid");
+				php_error_docref(NULL, E_WARNING, "ID3v2 tag contains invalid padding - tag considered invalid");
 				break;
 			}
 		}
@@ -726,7 +726,7 @@ void _php_id3v2_get_tag(php_stream *stream , zval* return_value, int version TSR
    some general jobs like de-unsynchronization
 
 	returns 1 if frame was successfully parsed, otherwise 0 */
-short _php_id3v2_parseFrame(zval *return_value, id3v2Header *sHeader, id3v2FrameHeader *sFrameHeader, unsigned char *frameContent, id3v2FrameMap *map TSRMLS_DC)
+short _php_id3v2_parseFrame(zval *return_value, id3v2Header *sHeader, id3v2FrameHeader *sFrameHeader, unsigned char *frameContent, id3v2FrameMap *map)
 {
 	int deUnsynched;
 
@@ -760,7 +760,7 @@ short _php_id3v2_parseFrame(zval *return_value, id3v2Header *sHeader, id3v2Frame
 			v2.4+ instead supports unsynchronization on frame-level
 		*/
 		if (sHeader->version > 3) {
-			deUnsynched = _php_deUnSynchronize(frameContent, sFrameHeader->size TSRMLS_CC);
+			deUnsynched = _php_deUnSynchronize(frameContent, sFrameHeader->size);
 			if (deUnsynched != sFrameHeader->size) {
 				return 0;
 			}
@@ -769,19 +769,19 @@ short _php_id3v2_parseFrame(zval *return_value, id3v2Header *sHeader, id3v2Frame
 
 	/* handle UFI[D] frame */
 	if (strncmp(sFrameHeader->id, "UFI", 3) == 0) {
-		return _php_id3v2_parseUFIDFrame(return_value, sHeader, sFrameHeader, frameContent, map TSRMLS_CC);
+		return _php_id3v2_parseUFIDFrame(return_value, sHeader, sFrameHeader, frameContent, map);
 	}
 
 	/* handle text-frames (T000 - TZZZ)
 		test whether frame-id start with "T" -> 0x54 == "T" */
 	if (sFrameHeader->id[0] == 0x54) {
-		return _php_id3v2_parseTextFrame(return_value, sHeader, sFrameHeader, frameContent, map TSRMLS_CC);
+		return _php_id3v2_parseTextFrame(return_value, sHeader, sFrameHeader, frameContent, map);
 	}
 
 	/* handle url/link-frames (W000 - WZZZ)
 		test whether frame-id start with "W" -> 0x57 == "W" */
 	if (sFrameHeader->id[0] == 0x57) {
-		return _php_id3v2_parseLinkFrame(return_value, sHeader, sFrameHeader, frameContent, map TSRMLS_CC);
+		return _php_id3v2_parseLinkFrame(return_value, sHeader, sFrameHeader, frameContent, map);
 	}
 
 	return 0;
@@ -795,7 +795,7 @@ short _php_id3v2_parseFrame(zval *return_value, id3v2Header *sHeader, id3v2Frame
 		Identifier              <up to 64 bytes binary data>
 
 	returns 1 if frame-content was successfully added to the return_value, otherwise 0 */
-short _php_id3v2_parseUFIDFrame(zval *return_value, id3v2Header *sHeader, id3v2FrameHeader *sFrameHeader, unsigned char *frameContent, id3v2FrameMap *map TSRMLS_DC)
+short _php_id3v2_parseUFIDFrame(zval *return_value, id3v2Header *sHeader, id3v2FrameHeader *sFrameHeader, unsigned char *frameContent, id3v2FrameMap *map)
 {
 	unsigned char	*information;
 
@@ -804,14 +804,14 @@ short _php_id3v2_parseUFIDFrame(zval *return_value, id3v2Header *sHeader, id3v2F
 	if (((sHeader->version >= 3) && (strcmp(sFrameHeader->id, "UFID") == 0)) ||
 		((sHeader->version == 2) && (strcmp(sFrameHeader->id, "UFI") == 0))) {
 
-		arrayKeyName = (sHeader->version == 2) ? _php_id3v2_getKeyForFrame(map, "UFI" TSRMLS_CC) :
-			_php_id3v2_getKeyForFrame(map, "UFID" TSRMLS_CC);
+		arrayKeyName = (sHeader->version == 2) ? _php_id3v2_getKeyForFrame(map, "UFI") :
+			_php_id3v2_getKeyForFrame(map, "UFID");
 		if (arrayKeyName == NULL) {
 			return 0;
 		}
 
 		information	= emalloc(sFrameHeader->size - 1);
-		_php_strnoffcpy(information, frameContent, 1, sFrameHeader->size - 1 TSRMLS_CC);
+		_php_strnoffcpy(information, frameContent, 1, sFrameHeader->size - 1);
 		add_assoc_stringl(return_value, arrayKeyName, (char*)information, sFrameHeader->size - 1);
 		efree(information);
 
@@ -826,7 +826,7 @@ short _php_id3v2_parseUFIDFrame(zval *return_value, id3v2Header *sHeader, id3v2F
    Parses text-frames (T000 - TZZZ)
 
 	returns 1 if frame-content was successfully added to the return_value, otherwise 0 */
-short _php_id3v2_parseTextFrame(zval *return_value, id3v2Header *sHeader, id3v2FrameHeader *sFrameHeader, unsigned char *frameContent, id3v2FrameMap *map TSRMLS_DC)
+short _php_id3v2_parseTextFrame(zval *return_value, id3v2Header *sHeader, id3v2FrameHeader *sFrameHeader, unsigned char *frameContent, id3v2FrameMap *map)
 {
 	/*
 		The text information frames are often the most important frames,
@@ -861,7 +861,7 @@ short _php_id3v2_parseTextFrame(zval *return_value, id3v2Header *sHeader, id3v2F
 	}
 
 	information	= emalloc(infoSize);
-	_php_strnoffcpy((unsigned char*)information, frameContent, 1, infoSize TSRMLS_CC);
+	_php_strnoffcpy((unsigned char*)information, frameContent, 1, infoSize);
 
 	/*  */
 	if (strncmp(sFrameHeader->id, "TXX", 3) != 0) {
@@ -870,7 +870,7 @@ short _php_id3v2_parseTextFrame(zval *return_value, id3v2Header *sHeader, id3v2F
 		for (i = 0; i < ID3V2_FRAMEMAP_ENTRIES; i++) {
 			if (strcmp(sFrameHeader->id, map[i].id) == 0) {
 				/* retrieve array-key for this frame's entry in the PHP result array */
-				if ((arrayKeyName = _php_id3v2_getKeyForFrame(map, map[i].id TSRMLS_CC)) == NULL) {
+				if ((arrayKeyName = _php_id3v2_getKeyForFrame(map, map[i].id)) == NULL) {
 					return 0;
 				}
 				/* add information to the result array */
@@ -894,7 +894,7 @@ short _php_id3v2_parseTextFrame(zval *return_value, id3v2Header *sHeader, id3v2F
    Parses url/link-frames (W000 - WZZZ)
 
 	returns 1 if frame-content was successfully added to the return_value, otherwise 0 */
-short _php_id3v2_parseLinkFrame(zval *return_value, id3v2Header *sHeader, id3v2FrameHeader *sFrameHeader, unsigned char *frameContent, id3v2FrameMap *map TSRMLS_DC)
+short _php_id3v2_parseLinkFrame(zval *return_value, id3v2Header *sHeader, id3v2FrameHeader *sFrameHeader, unsigned char *frameContent, id3v2FrameMap *map)
 {
 	/*
 		With these frames dynamic data such as webpages with touring
@@ -927,7 +927,7 @@ short _php_id3v2_parseLinkFrame(zval *return_value, id3v2Header *sHeader, id3v2F
 		for (i = 0; i < ID3V2_FRAMEMAP_ENTRIES; i++) {
 			if (strcmp(sFrameHeader->id, map[i].id) == 0) {
 				/* retrieve array-key for this frame's entry in the PHP result array */
-				if ((arrayKeyName = _php_id3v2_getKeyForFrame(map, map[i].id TSRMLS_CC)) == NULL) {
+				if ((arrayKeyName = _php_id3v2_getKeyForFrame(map, map[i].id)) == NULL) {
 					return 0;
 				}
 				/* add information to the result array */
@@ -948,7 +948,7 @@ short _php_id3v2_parseLinkFrame(zval *return_value, id3v2Header *sHeader, id3v2F
 /* {{{
    strncpy function that supports offsets,
    returns the number of bytes copied */
-int _php_strnoffcpy(unsigned char *dest, unsigned char *src, int offset, int len TSRMLS_DC)
+int _php_strnoffcpy(unsigned char *dest, unsigned char *src, int offset, int len)
 {
 	int i;
 
@@ -975,7 +975,7 @@ PHP_FUNCTION(id3_set_tag)
 	zend_string *key;
 	zval *data;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "za|l", &arg, &z_array, &version) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "za|l", &arg, &z_array, &version) == FAILURE) {
 		return;
 	}
 
@@ -983,7 +983,7 @@ PHP_FUNCTION(id3_set_tag)
 	 * v2.0 will be implemented at later point
 	 */
 	if (version != ID3_V1_0 && version != ID3_V1_1) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "id3_get_tag(): Unsupported version given");
+		php_error_docref(NULL, E_WARNING, "id3_get_tag(): Unsupported version given");
 		return;
 	}
 
@@ -996,7 +996,7 @@ PHP_FUNCTION(id3_set_tag)
 			php_stream_from_zval(stream, arg);
 			break;
 		default:
-			php_error_docref(NULL TSRMLS_CC, E_WARNING, "id3_set_tag() expects parameter 1 to be string or resource");
+			php_error_docref(NULL, E_WARNING, "id3_set_tag() expects parameter 1 to be string or resource");
 			return;
 	}
 
@@ -1011,7 +1011,7 @@ PHP_FUNCTION(id3_set_tag)
 	 * No ID3v1.x tag found => append TAG and 125 zerobytes
 	 * that will later store the supplied information
 	 */
-	old_version = _php_id3_get_version(stream TSRMLS_CC);
+	old_version = _php_id3_get_version(stream);
 	if ((old_version & ID3_V1_0) == 0) {
 		char blanks[125];
 		php_stream_seek(stream, 0, SEEK_END);
@@ -1029,7 +1029,7 @@ PHP_FUNCTION(id3_set_tag)
 		if( strcmp("title", key_char) == 0) {
 			convert_to_string(data);
 			if (strlen(Z_STRVAL_P(data)) > 30) {
-				php_error_docref(NULL TSRMLS_CC, E_NOTICE, "id3_set_tag(): title must be maximum of 30 characters, title gets truncated");
+				php_error_docref(NULL, E_NOTICE, "id3_set_tag(): title must be maximum of 30 characters, title gets truncated");
 			}
 			php_stream_seek(stream, ID3_SEEK_V1_TITLE, SEEK_END);
 			php_stream_write(stream, Z_STRVAL_P(data), 30);
@@ -1038,19 +1038,19 @@ PHP_FUNCTION(id3_set_tag)
 		if( strcmp("artist", key_char) == 0) {
 			convert_to_string(data);
 			if (strlen(Z_STRVAL_P(data)) > 30) {
-				php_error_docref(NULL TSRMLS_CC, E_NOTICE, "id3_set_tag(): artist must be maximum of 30 characters, artist gets truncated");
+				php_error_docref(NULL, E_NOTICE, "id3_set_tag(): artist must be maximum of 30 characters, artist gets truncated");
 			}
 			php_stream_seek(stream, ID3_SEEK_V1_ARTIST, SEEK_END);
-			_php_id3_write_padded(stream, data, 30 TSRMLS_CC);
+			_php_id3_write_padded(stream, data, 30);
 		}
 
 		if( strcmp("album", key_char) == 0) {
 			convert_to_string(data);
 			if (strlen(Z_STRVAL_P(data)) > 30) {
-				php_error_docref(NULL TSRMLS_CC, E_NOTICE, "id3_set_tag(): album must be maximum of 30 characters, album gets truncated");
+				php_error_docref(NULL, E_NOTICE, "id3_set_tag(): album must be maximum of 30 characters, album gets truncated");
 			}
 			php_stream_seek(stream, ID3_SEEK_V1_ALBUM, SEEK_END);
-		  	_php_id3_write_padded(stream, data, 30 TSRMLS_CC);
+		  	_php_id3_write_padded(stream, data, 30);
 		}
 
 		if( strcmp("comment", key_char) == 0) {
@@ -1060,26 +1060,26 @@ PHP_FUNCTION(id3_set_tag)
 				maxlen	=	28;
 			}
 			if (Z_STRLEN_P(data) > maxlen) {
-				php_error_docref(NULL TSRMLS_CC, E_NOTICE, "id3_set_tag(): comment must be maximum of 30 or 28 characters if v1.1 is used, comment gets truncated");
+				php_error_docref(NULL, E_NOTICE, "id3_set_tag(): comment must be maximum of 30 or 28 characters if v1.1 is used, comment gets truncated");
 			}
 			php_stream_seek(stream, ID3_SEEK_V1_COMMENT, SEEK_END);
-			_php_id3_write_padded(stream, data, maxlen TSRMLS_CC);
+			_php_id3_write_padded(stream, data, maxlen);
 
 		}
 
 		if( strcmp("year", key_char) == 0) {
 			convert_to_string(data);
 			if(strlen(Z_STRVAL_P(data)) > 4) {
-				php_error_docref(NULL TSRMLS_CC, E_NOTICE, "id3_set_tag(): year must be maximum of 4 characters, year gets truncated");
+				php_error_docref(NULL, E_NOTICE, "id3_set_tag(): year must be maximum of 4 characters, year gets truncated");
 			}
 			php_stream_seek(stream, ID3_SEEK_V1_YEAR, SEEK_END);
-			_php_id3_write_padded(stream, data, 4 TSRMLS_CC);
+			_php_id3_write_padded(stream, data, 4);
 		}
 
 		if( strcmp("genre", key_char) == 0) {
 			convert_to_long(data);
 			if (Z_LVAL_P(data) > ID3_GENRE_COUNT) {
-				php_error_docref(NULL TSRMLS_CC, E_WARNING, "id3_set_tag(): genre must not be greater than 147");
+				php_error_docref(NULL, E_WARNING, "id3_set_tag(): genre must not be greater than 147");
 				continue;
 			}
 			php_stream_seek(stream, ID3_SEEK_V1_GENRE, SEEK_END);
@@ -1089,11 +1089,11 @@ PHP_FUNCTION(id3_set_tag)
 		if( strcmp("track", key_char) == 0) {
 			convert_to_long(data);
 			if (version != ID3_V1_1) {
-				php_error_docref(NULL TSRMLS_CC, E_WARNING, "id3_set_tag(): track may only be stored in ID3v1.1 tags");
+				php_error_docref(NULL, E_WARNING, "id3_set_tag(): track may only be stored in ID3v1.1 tags");
 				continue;
 			}
 			if (Z_LVAL_P(data) > 255) {
-				php_error_docref(NULL TSRMLS_CC, E_WARNING, "id3_set_tag(): track must not be greater than 255");
+				php_error_docref(NULL, E_WARNING, "id3_set_tag(): track must not be greater than 255");
 				continue;
 			}
 			php_stream_seek(stream, ID3_SEEK_V1_TRACK-1, SEEK_END);
@@ -1110,7 +1110,7 @@ PHP_FUNCTION(id3_set_tag)
 /* }}} */
 
 /* {{{ write a zero-padded string to the stream */
-int _php_id3_write_padded(php_stream *stream, zval *data, int length TSRMLS_DC)
+int _php_id3_write_padded(php_stream *stream, zval *data, int length)
 {
 	if (Z_STRLEN_P(data) > length) {
 		php_stream_write(stream, Z_STRVAL_P(data), length);
@@ -1129,11 +1129,11 @@ int _php_id3_write_padded(php_stream *stream, zval *data, int length TSRMLS_DC)
 PHP_FUNCTION(id3_get_genre_name)
 {
 	long id;
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &id) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "l", &id) == FAILURE) {
 		return;
 	}
 	if (id >= ID3_GENRE_COUNT  || id < 0) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "id3_get_genre_name(): id must be between 0 and 147");
+		php_error_docref(NULL, E_WARNING, "id3_get_genre_name(): id must be between 0 and 147");
 		return;
 	}
 	RETURN_STRING(id3_genres[(int)id]);
@@ -1147,7 +1147,7 @@ PHP_FUNCTION(id3_get_genre_id)
 	char *name;
 	size_t name_len;
 	int i;
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &name, &name_len) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "s", &name, &name_len) == FAILURE) {
 		return;
 	}
 	for (i = 0; i < ID3_GENRE_COUNT; i++) {
@@ -1170,13 +1170,13 @@ PHP_FUNCTION(id3_get_frame_short_name)
 	short			found = 0;
 	id3v2FrameMap	*map;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &frameId, &frameIdLen) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "s", &frameId, &frameIdLen) == FAILURE) {
 		return;
 	}
 
 	/* build frame-key-map that knows what an array-key shall be used for a specific frame */
 	map = emalloc(ID3V2_FRAMEMAP_ENTRIES * sizeof(id3v2FrameMap));
-	_php_id3v2_buildFrameMap(map TSRMLS_CC);
+	_php_id3v2_buildFrameMap(map);
 
 	/* look if an entry in map matches */
 	for (i = 0; i < ID3V2_FRAMEMAP_ENTRIES; i++) {
@@ -1208,13 +1208,13 @@ PHP_FUNCTION(id3_get_frame_long_name)
 	short			found = 0;
 	id3v2FrameMap	*map;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s", &frameId, &frameIdLen) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "s", &frameId, &frameIdLen) == FAILURE) {
 		return;
 	}
 
 	/* build frame-key-map that knows what an array-key shall be used for a specific frame */
 	map = emalloc(ID3V2_FRAMEMAP_ENTRIES * sizeof(id3v2FrameMap));
-	_php_id3v2_buildFrameMap(map TSRMLS_CC);
+	_php_id3v2_buildFrameMap(map);
 
 	/* look if an entry in map matches */
 	for (i = 0; i < ID3V2_FRAMEMAP_ENTRIES; i++) {
@@ -1258,13 +1258,13 @@ PHP_FUNCTION(id3_remove_tag)
 	long version = ID3_V1_0;
 	int cutPos;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "z|l", &arg, &version) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "z|l", &arg, &version) == FAILURE) {
 		return;
 	}
 
 	/* v2.0 will be implemented at later point */
 	if (version != ID3_V1_0 && version != ID3_V1_1) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "id3_remove_tag(): Unsupported version given");
+		php_error_docref(NULL, E_WARNING, "id3_remove_tag(): Unsupported version given");
 		return;
 	}
 
@@ -1277,7 +1277,7 @@ PHP_FUNCTION(id3_remove_tag)
 			php_stream_from_zval(stream, arg);
 			break;
 		default:
-			php_error_docref(NULL TSRMLS_CC, E_WARNING, "id3_remove_tag() expects parameter 1 to be string or resource");
+			php_error_docref(NULL, E_WARNING, "id3_remove_tag() expects parameter 1 to be string or resource");
 			return;
 	}
 
@@ -1286,8 +1286,8 @@ PHP_FUNCTION(id3_remove_tag)
 		RETURN_FALSE;
 	}
 
-	if ((_php_id3_get_version(stream TSRMLS_CC) & ID3_V1_0) == 0) {
-		php_error_docref(NULL TSRMLS_CC, E_NOTICE, "id3_remove_tag() no ID3v1 tag found");
+	if ((_php_id3_get_version(stream) & ID3_V1_0) == 0) {
+		php_error_docref(NULL, E_NOTICE, "id3_remove_tag() no ID3v1 tag found");
 		if (opened == 1) {
 			php_stream_close(stream);
 		}
@@ -1297,7 +1297,7 @@ PHP_FUNCTION(id3_remove_tag)
 	php_stream_seek(stream, ID3_SEEK_V1_TAG, SEEK_END);
 	cutPos = php_stream_tell(stream);
 	if(cutPos == -1) {
-		php_error_docref(NULL TSRMLS_CC, E_WARNING, "id3_remove_tag() was unable to remove the existing id3-tag");
+		php_error_docref(NULL, E_WARNING, "id3_remove_tag() was unable to remove the existing id3-tag");
 		if (opened == 1) {
 			php_stream_close(stream);
 		}
@@ -1308,7 +1308,7 @@ PHP_FUNCTION(id3_remove_tag)
 	#if PHP_MAJOR_VERSION >= 5
 		/* cut the stream right before TAG */
 		if(php_stream_truncate_set_size(stream, cutPos) == -1) {
-			php_error_docref(NULL TSRMLS_CC, E_WARNING, "id3_remove_tag() was unable to remove the existing id3-tag");
+			php_error_docref(NULL, E_WARNING, "id3_remove_tag() was unable to remove the existing id3-tag");
 			if (opened == 1) {
 				php_stream_close(stream);
 			}
@@ -1317,7 +1317,7 @@ PHP_FUNCTION(id3_remove_tag)
 	#else
 		/* get the filedescriptor */
 		if (FAILURE == php_stream_cast(stream, PHP_STREAM_AS_FD, (void **) &fd, REPORT_ERRORS)) {
-			php_error_docref(NULL TSRMLS_CC, E_WARNING, "id3_remove_tag() was unable to remove the existing id3-tag");
+			php_error_docref(NULL, E_WARNING, "id3_remove_tag() was unable to remove the existing id3-tag");
 			if (opened == 1) {
 				php_stream_close(stream);
 			}
@@ -1325,7 +1325,7 @@ PHP_FUNCTION(id3_remove_tag)
 		}
 		/* cut the stream right before TAG */
 		if(ftruncate(fd, cutPos) == -1) {
-			php_error_docref(NULL TSRMLS_CC, E_WARNING, "id3_remove_tag() was unable to remove the existing id3-tag");
+			php_error_docref(NULL, E_WARNING, "id3_remove_tag() was unable to remove the existing id3-tag");
 			if (opened == 1) {
 				php_stream_close(stream);
 			}
@@ -1350,7 +1350,7 @@ PHP_FUNCTION(id3_get_version)
 	int opened = 0;
 	int version = 0;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "z", &arg) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS(), "z", &arg) == FAILURE) {
 		return;
 	}
 
@@ -1363,7 +1363,7 @@ PHP_FUNCTION(id3_get_version)
 			php_stream_from_zval(stream, arg);
 			break;
 		default:
-			php_error_docref(NULL TSRMLS_CC, E_WARNING, "id3_get_version() expects parameter 1 to be string or resource");
+			php_error_docref(NULL, E_WARNING, "id3_get_version() expects parameter 1 to be string or resource");
 			return;
 	}
 
@@ -1374,7 +1374,7 @@ PHP_FUNCTION(id3_get_version)
 		RETURN_FALSE;
 	}
 
-	version = _php_id3_get_version(stream TSRMLS_CC);
+	version = _php_id3_get_version(stream);
 
 	if (opened == 1) {
 		php_stream_close(stream);
@@ -1385,7 +1385,7 @@ PHP_FUNCTION(id3_get_version)
 
 /* {{{
    Returns a structure that contains the header-data */
-id3v2Header _php_id3v2_get_header(php_stream *stream TSRMLS_DC)
+id3v2Header _php_id3v2_get_header(php_stream *stream)
 {
 /*
    Overall tag structure:
@@ -1485,8 +1485,8 @@ id3v2Header _php_id3v2_get_header(php_stream *stream TSRMLS_DC)
 	if(sHeader.flags.footer == 1) {
 		footer = 10;
 	}
-	sHeader.size 	= _php_bigEndian_to_Int(size, 4, 1 TSRMLS_CC);
-	sHeader.effSize	= 10 + _php_bigEndian_to_Int(size, 4, 1 TSRMLS_CC) + footer;
+	sHeader.size 	= _php_bigEndian_to_Int(size, 4, 1);
+	sHeader.effSize	= 10 + _php_bigEndian_to_Int(size, 4, 1) + footer;
 
 	return sHeader;
 }
@@ -1494,7 +1494,7 @@ id3v2Header _php_id3v2_get_header(php_stream *stream TSRMLS_DC)
 
 /* {{{
    Returns a structure that contains a structure that describes the extended tag-header */
-id3v2ExtHeader _php_id3v2_get_extHeader(php_stream *stream TSRMLS_DC)
+id3v2ExtHeader _php_id3v2_get_extHeader(php_stream *stream)
 {
 /*
    The extended header contains information that can provide further
@@ -1584,7 +1584,7 @@ id3v2ExtHeader _php_id3v2_get_extHeader(php_stream *stream TSRMLS_DC)
 	php_stream_read(stream, &numFlagBytes, 1);
 	php_stream_read(stream, &extFlags, 1);
 
-	sExtHdr.size 				= _php_bigEndian_to_Int(size, 4, 1 TSRMLS_CC);
+	sExtHdr.size 				= _php_bigEndian_to_Int(size, 4, 1);
 	sExtHdr.numFlagBytes		= (int)numFlagBytes;
 
 	sExtHdr.flags.update		= BIT6((int)extFlags) > 0 ? 1 : 0;
@@ -1593,7 +1593,7 @@ id3v2ExtHeader _php_id3v2_get_extHeader(php_stream *stream TSRMLS_DC)
 
 	if (sExtHdr.flags.crcPresent == 1) {
 		php_stream_read(stream, crcData, 5);
-		sExtHdr.flags.crcData = _php_bigEndian_to_Int(crcData, 5, 1 TSRMLS_CC);
+		sExtHdr.flags.crcData = _php_bigEndian_to_Int(crcData, 5, 1);
 	}
 
 	if (sExtHdr.flags.restrictions == 1) {
@@ -1614,7 +1614,7 @@ id3v2ExtHeader _php_id3v2_get_extHeader(php_stream *stream TSRMLS_DC)
 
 /* {{{
    Returns a structure that contains the frame's header-data */
-id3v2FrameHeader _php_id3v2_get_frameHeader(unsigned char *data, int offset, short version TSRMLS_DC)
+id3v2FrameHeader _php_id3v2_get_frameHeader(unsigned char *data, int offset, short version)
 {
 	id3v2FrameHeader sFrameHeader;
 	id3v2FrameHeaderFlags sFlags;
@@ -1636,11 +1636,11 @@ id3v2FrameHeader _php_id3v2_get_frameHeader(unsigned char *data, int offset, sho
 	sFlags.dataLengthIndicator		= -1;
 	sFlags.dataLength				= -1;
 
-	frameDataLength	= _php_id3v2_get_frameHeaderLength(version TSRMLS_CC);
+	frameDataLength	= _php_id3v2_get_frameHeaderLength(version);
 	frameData		= emalloc(frameDataLength);
 
 	/* copy relevant frame data */
-	_php_strnoffcpy(frameData, data, offset, frameDataLength TSRMLS_CC);
+	_php_strnoffcpy(frameData, data, offset, frameDataLength);
 
 	if (version == 2) {
 		/*
@@ -1650,7 +1650,7 @@ id3v2FrameHeader _php_id3v2_get_frameHeader(unsigned char *data, int offset, sho
 		strncpy(sFrameHeader.id, (char*)frameData, 3);
 		size = emalloc(3);
 		size[0] = frameData[3]; size[1] = frameData[4]; size[2] = frameData[5];
-		sFrameHeader.size = _php_bigEndian_to_Int((char*)size, 3, 0 TSRMLS_CC);
+		sFrameHeader.size = _php_bigEndian_to_Int((char*)size, 3, 0);
 
 		/* no flags in 2.2 */
 
@@ -1674,10 +1674,10 @@ id3v2FrameHeader _php_id3v2_get_frameHeader(unsigned char *data, int offset, sho
 
 		if (version == 3) {
 			/* v2.3 -> 32bit integer */
-			sFrameHeader.size = _php_bigEndian_to_Int((char*)size, 4, 0 TSRMLS_CC);
+			sFrameHeader.size = _php_bigEndian_to_Int((char*)size, 4, 0);
 		} else {
 			/* v2.4+ -> 32bit synchsafe integer (28bit value) */
-			sFrameHeader.size = _php_bigEndian_to_Int((char*)size, 4, 1 TSRMLS_CC);
+			sFrameHeader.size = _php_bigEndian_to_Int((char*)size, 4, 1);
 		}
 
 		/*
@@ -1824,11 +1824,11 @@ id3v2FrameHeader _php_id3v2_get_frameHeader(unsigned char *data, int offset, sho
 
 /* {{{
    Returns the length in bytes of the id3v2-tag */
-int _php_id3v2_get_framesOffset(php_stream *stream TSRMLS_DC)
+int _php_id3v2_get_framesOffset(php_stream *stream)
 {
 	int offset = 0;
 
-	id3v2Header sHeader = _php_id3v2_get_header(stream TSRMLS_CC);
+	id3v2Header sHeader = _php_id3v2_get_header(stream);
 	id3v2ExtHeader sExtHdr;
 
 	/* if no extended header is present the frames will start directly after the header */
@@ -1838,25 +1838,25 @@ int _php_id3v2_get_framesOffset(php_stream *stream TSRMLS_DC)
 
 	/* when this is executed an extended header is present */
 	offset += 10;
-	sExtHdr = _php_id3v2_get_extHeader(stream TSRMLS_CC);
+	sExtHdr = _php_id3v2_get_extHeader(stream);
 	return offset += sExtHdr.size;
 }
 /* }}} */
 
 /* {{{
    Returns the length of the frame-block in bytes */
-int _php_id3v2_get_framesLength(php_stream* stream TSRMLS_DC)
+int _php_id3v2_get_framesLength(php_stream* stream)
 {
 	int frameDataLength = 0;
 
 	id3v2Header sHeader;
 	id3v2ExtHeader sExtHeader;
 
-	sHeader = _php_id3v2_get_header(stream TSRMLS_CC);
+	sHeader = _php_id3v2_get_header(stream);
 
 	frameDataLength	= sHeader.size;
 	if (sHeader.flags.extHdr == 1) {
-		sExtHeader = _php_id3v2_get_extHeader(stream TSRMLS_CC);
+		sExtHeader = _php_id3v2_get_extHeader(stream);
 		frameDataLength -= sExtHeader.size;
 	}
 
@@ -1866,7 +1866,7 @@ int _php_id3v2_get_framesLength(php_stream* stream TSRMLS_DC)
 
 /* {{{
    Returns the version-number (see the version constants above) */
-int _php_id3_get_version(php_stream *stream TSRMLS_DC)
+int _php_id3_get_version(php_stream *stream)
 {
 	int		version = 0;
 	char 	buf[4],
@@ -1921,7 +1921,7 @@ int _php_id3_get_version(php_stream *stream TSRMLS_DC)
 
 /* {{{
    Converts a big-endian byte-stream into an integer */
-int _php_bigEndian_to_Int(char* byteword, int bytewordlen, short synchsafe TSRMLS_DC)
+int _php_bigEndian_to_Int(char* byteword, int bytewordlen, short synchsafe)
 {
 	int	intvalue	= 0,
 		i;
@@ -1941,7 +1941,7 @@ int _php_bigEndian_to_Int(char* byteword, int bytewordlen, short synchsafe TSRML
 /* {{{
    De-Unsynchronizes the data in a specified buffer.
    Returns the bufferlength after de-unsynchronization */
-int _php_deUnSynchronize(unsigned char* buf, int bufLen TSRMLS_DC)
+int _php_deUnSynchronize(unsigned char* buf, int bufLen)
 {
 	int	i,
 		j,
@@ -1980,7 +1980,7 @@ int _php_deUnSynchronize(unsigned char* buf, int bufLen TSRMLS_DC)
 
 /* {{{
    Returns the frame-header length depending on id3v2 major-version */
-short _php_id3v2_get_frameHeaderLength(short majorVersion TSRMLS_DC)
+short _php_id3v2_get_frameHeaderLength(short majorVersion)
 {
 	return ((majorVersion == 2) ? 6 : 10);
 }
