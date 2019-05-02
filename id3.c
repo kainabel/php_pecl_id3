@@ -189,21 +189,63 @@ const int ID3_SEEK_V1_GENRE = -1;
 ZEND_DECLARE_MODULE_GLOBALS(id3)
 */
 
+/* {{{ arginfo
+ */
+ZEND_BEGIN_ARG_INFO_EX(arginfo_id3_get_version, 0, 0, 1)
+	ZEND_ARG_INFO(0, file)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_id3_get_tag, 0, 0, 1)
+	ZEND_ARG_INFO(0, file)
+	ZEND_ARG_INFO(0, version)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_id3_set_tag, 0, 0, 2)
+	ZEND_ARG_INFO(0, file)
+	ZEND_ARG_INFO(0, tag)
+	ZEND_ARG_INFO(0, version)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO(arginfo_id3_get_genre_list, 0)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_id3_get_genre_name, 0, 0, 1)
+	ZEND_ARG_INFO(0, id)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_id3_get_genre_id, 0, 0, 1)
+	ZEND_ARG_INFO(0, name)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_id3_get_frame_short_name, 0, 0, 1)
+	ZEND_ARG_INFO(0, frameId)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_id3_get_frame_long_name, 0, 0, 1)
+	ZEND_ARG_INFO(0, frameId)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_id3_remove_tag, 0, 0, 1)
+	ZEND_ARG_INFO(0, file)
+	ZEND_ARG_INFO(0, version)
+ZEND_END_ARG_INFO()
+/* }}} */
+
 /* {{{ id3_functions[]
  *
  * Every user visible function must have an entry in id3_functions[].
  */
 zend_function_entry id3_functions[] = {
-	PHP_FE(id3_get_version, NULL)
-	PHP_FE(id3_get_tag,	NULL)
-	PHP_FE(id3_set_tag, NULL)
-	PHP_FE(id3_get_genre_list, NULL)
-	PHP_FE(id3_get_genre_name, NULL)
-	PHP_FE(id3_get_genre_id, NULL)
-	PHP_FE(id3_get_frame_short_name, NULL)
-	PHP_FE(id3_get_frame_long_name, NULL)
-	PHP_FE(id3_remove_tag, NULL)
-	{NULL, NULL, NULL}
+	PHP_FE(id3_get_version, arginfo_id3_get_version)
+	PHP_FE(id3_get_tag,	arginfo_id3_get_tag)
+	PHP_FE(id3_set_tag, arginfo_id3_set_tag)
+	PHP_FE(id3_get_genre_list, arginfo_id3_get_genre_list)
+	PHP_FE(id3_get_genre_name, arginfo_id3_get_genre_name)
+	PHP_FE(id3_get_genre_id, arginfo_id3_get_genre_id)
+	PHP_FE(id3_get_frame_short_name, arginfo_id3_get_frame_short_name)
+	PHP_FE(id3_get_frame_long_name, arginfo_id3_get_frame_long_name)
+	PHP_FE(id3_remove_tag, arginfo_id3_remove_tag)
+	PHP_FE_END
 };
 /* }}} */
 
@@ -267,7 +309,7 @@ PHP_MINFO_FUNCTION(id3)
 }
 /* }}} */
 
-/* {{{ proto array id3_get_tag(string file)
+/* {{{ proto array id3_get_tag(mixed file [, int version])
    Returns an array containg all information from the id3 tag */
 PHP_FUNCTION(id3_get_tag)
 {
@@ -960,7 +1002,7 @@ int _php_strnoffcpy(unsigned char *dest, unsigned char *src, int offset, int len
 }
 /* }}} */
 
-/* {{{ proto boolean id3_set_tag(string file, array tag [, int version])
+/* {{{ proto boolean id3_set_tag(mixed file, array tag [, int version])
    Set an array containg all information from the id3 tag */
 PHP_FUNCTION(id3_set_tag)
 {
@@ -1248,7 +1290,7 @@ PHP_FUNCTION(id3_get_genre_list)
 }
 /* }}} */
 
-/* {{{ proto int id3_remove_tag()
+/* {{{ proto int id3_remove_tag(mixed file [, version])
  *  *	Returns true on success, otherwise false */
 PHP_FUNCTION(id3_remove_tag)
 {
@@ -1341,7 +1383,7 @@ PHP_FUNCTION(id3_remove_tag)
 /* }}} */
 
 
-/* {{{ proto int id3_get_version(string file)
+/* {{{ proto int id3_get_version(mixed file)
    Returns version of the id3 tag */
 PHP_FUNCTION(id3_get_version)
 {
